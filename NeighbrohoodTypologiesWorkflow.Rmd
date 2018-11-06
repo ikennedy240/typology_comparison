@@ -1,0 +1,28 @@
+---
+title: "Neighborhood Typologies Workflow"
+output: html_notebook
+---
+
+
+```{r}
+df <- read_csv(data)
+hannah <- hannaH(df)
+ian <- ian(df)
+shihao <- shihao(df)
+
+chetty <- read(chetty)
+inner_join(all, by = GEOID)
+```
+
+
+```{r}
+model <- glm(dv1 ~ ian + covariates?)
+```
+
+Goodness of fit tests
+
+```{r}
+make_cool_visualization(model, ian)
+```
+
+

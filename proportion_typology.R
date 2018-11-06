@@ -1,8 +1,8 @@
 library(tidyverse)
 df_10 <- read_csv("data/LTDB_Std_All_fullcount/LTDB_Std_2010_fullcount.csv") 
 df <- read_csv("data/LTDB_Std_1980_fullcount.csv") # read data 
-df <- full_join(df, df_10['tractid'], by = c('TRTID10'='tractid')) %>% 
-  mutate_if(is.numeric, funs(replace(., is.na(.), 0)))
+#df <- full_join(df, df_10['tractid'], by = c('TRTID10'='tractid')) %>% 
+#  mutate_if(is.numeric, funs(replace(., is.na(.), 0)))
 
 
 
