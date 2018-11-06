@@ -1,6 +1,11 @@
 library(tidyverse)
-
+df_10 <- read_csv("data/LTDB_Std_All_fullcount/LTDB_Std_2010_fullcount.csv") 
 df <- read_csv("data/LTDB_Std_1980_fullcount.csv") # read data 
+df <- full_join(df, df_10['tractid'], by = c('TRTID10'='tractid')) %>% 
+  mutate_if(is.numeric, funs(replace(., is.na(.), 0)))
+
+
+
 columns <- c("TRTID10","POP80", "NHWHT80","NHBLK80","NTV80","ASIAN80","HISP80") # set columns to grab
 labels <- c("TRTID10","pop_full", 'white','black','native','asian','latinx') # set labels to use
 re_cols <- c('white','black','native','asian','latinx') # subset of just race and ethnicity columns
