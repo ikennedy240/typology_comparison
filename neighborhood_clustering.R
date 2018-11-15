@@ -17,8 +17,9 @@ options(scipen=999)
 library(rgdal)
 library(spdep)
 
+hannah <- function(df){
 #### Read in 1980 decennial census counts ####
-pop1980 <- read_csv("LTDB_Std_1980_fullcount.csv") %>% # there were 59,187 census tracts in 1980
+pop1980 <- df %>% # there were 59,187 census tracts in 1980
   select(TRTID10:NHBLK80, ASIAN80, HISP80) %>%
   rename(TRACTID = TRTID10) %>%
   mutate(TRACTID = str_pad(TRACTID, width = 11, side = "left", pad = "0")) %>% # add leading zero to get common width of 11
@@ -128,8 +129,7 @@ df.lm <- df.foranalysis %>%
          hisp.clst.dmmy = replace_na(hisp.clst.dmmy, 0)) %>%
   select(STATEFP10:TractFIPS, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy)
 
-## see how many census tracts are the focal white, black, asian, hispanic cluster 
-sum(df.lm$wht.clst.dmmy)
-sum(df.lm$blk.clst.dmmy)
-sum(df.lm$as.clst.dmmy)
-sum(df.lm$hisp.clst.dmmy)
+return(df.lm %>% 
+         rename(TRTID10 = TRACTID) %>% 
+         select(TRTID10, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy))
+}
