@@ -6,6 +6,7 @@ output: html_notebook
 ```{r load dependencies}
 library(tidyverse)
 source('proportion_typology.R')
+source('neighborhood_clustering.R')
 ```
 
 ```{r load data}
@@ -14,12 +15,12 @@ df <- read_csv("data/LTDB_Std_1980_fullcount.csv")
 
 
 ```{r prepare for analysis}
-hannah <- hannaH(df)
+hannah <- hannah(df)
 ian <- ian(df)
 shihao <- shihao(df)
 
 chetty <- read(chetty)
-inner_join(df, ian, by = 'TRTID10')
+inner_join(df, ian, hannah, by = 'TRTID10')
 ```
 
 

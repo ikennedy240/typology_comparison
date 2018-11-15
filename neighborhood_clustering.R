@@ -2,8 +2,6 @@
 # CSSS 510 final project
 # Hannah Lee
 
-rm(list=ls())
-
 library(dplyr)
 library(withr)
 library(stringr)
@@ -52,15 +50,15 @@ pop1980.foranalysis <- pop1980 %>%
   mutate(TRACTID = as.numeric(TRACTID))
 
 #### Read in 2010 census tract shapefiles and the spatial weights ####
-if(!file.exists("2010tractshape.Rdata")){
-  tract.shape.2010 <- readOGR(dsn = "TractS2010",
+if(!file.exists("data/2010tractshape.Rdata")){
+  tract.shape.2010 <- readOGR(dsn = "data/TractS2010",
                               layer = "tract2010")
   
   save(tract.shape.2010, 
-       file = "2010tractshape.Rdata")
+       file = "data/2010tractshape.Rdata")
 }
 
-load("2010tractshape.Rdata") 
+load("data/2010tractshape.Rdata") 
 
 tract.shape.clean <- tract.shape.2010[!tract.shape.2010@data$STATEFP10==72,] # filter out puerto rico 
 xy <- coordinates(tract.shape.clean) # retrieve coordinates of tracts to calculate spatial distance 
