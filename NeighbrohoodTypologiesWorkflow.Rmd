@@ -3,15 +3,23 @@ title: "Neighborhood Typologies Workflow"
 output: html_notebook
 ---
 
+```{r load dependencies}
+library(tidyverse)
+source('proportion_typology.R')
+```
 
-```{r}
-df <- read_csv(data)
+```{r load data}
+df <- read_csv("data/LTDB_Std_1980_fullcount.csv")
+```
+
+
+```{r prepare for analysis}
 hannah <- hannaH(df)
 ian <- ian(df)
 shihao <- shihao(df)
 
 chetty <- read(chetty)
-inner_join(all, by = GEOID)
+inner_join(df, ian, by = 'TRTID10')
 ```
 
 

@@ -1,11 +1,10 @@
 library(tidyverse)
-df_10 <- read_csv("data/LTDB_Std_All_fullcount/LTDB_Std_2010_fullcount.csv") 
-df <- read_csv("data/LTDB_Std_1980_fullcount.csv") # read data 
+#df_10 <- read_csv("data/LTDB_Std_All_fullcount/LTDB_Std_2010_fullcount.csv") 
+#df <- read_csv("data/LTDB_Std_1980_fullcount.csv") # read data 
 #df <- full_join(df, df_10['tractid'], by = c('TRTID10'='tractid')) %>% 
 #  mutate_if(is.numeric, funs(replace(., is.na(.), 0)))
 
-
-
+ian <- function(df){
 columns <- c("TRTID10","POP80", "NHWHT80","NHBLK80","NTV80","ASIAN80","HISP80") # set columns to grab
 labels <- c("TRTID10","pop_full", 'white','black','native','asian','latinx') # set labels to use
 re_cols <- c('white','black','native','asian','latinx') # subset of just race and ethnicity columns
@@ -41,3 +40,5 @@ types <- props %>% gather(race, proportion, -TRTID10) %>% #go to long format
     collapsed_type = ifelse(highest<=.8&middle<=.1,paste(first,'mixed'),collapsed_type), # if the second is below 10 then we'll call label it with the first group and mixed
     collapsed_type = ifelse(is.na(highest),'empty',collapsed_type) # if there's an NA it's because the tract proportion divided by zero: an empty tract
   )
+return(types %>% select(TRTID10, type, collapsed_type))
+}
