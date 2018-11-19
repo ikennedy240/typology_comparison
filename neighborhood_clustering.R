@@ -17,6 +17,7 @@ options(scipen=999)
 library(rgdal)
 library(spdep)
 
+
 hannah <- function(df){
 #### Read in 1980 decennial census counts ####
 pop1980 <- df %>% # there were 59,187 census tracts in 1980
@@ -31,35 +32,33 @@ pop1980 <- df %>% # there were 59,187 census tracts in 1980
          prop.asian80 = ifelse(POP80 > 0, ASIAN80/POP80, 0),
          prop.hisp80 = ifelse(POP80 > 0, HISP80/POP80, 0))
 
-# get the average proportion of each ethnic group for each county
-county.avgpop1980 <- pop1980 %>%
+# calculate average proportion of each racial group nationwide
+avg.pop1980 <- pop1980 %>%
   select(TRACTID, StateFIPS, CountyFIPS, prop.nhwht80:prop.hisp80) %>%
-  group_by(StateFIPS, CountyFIPS) %>%
   summarise(mean(prop.nhwht80), 
             mean(prop.nhblk80), 
             mean(prop.asian80), 
             mean(prop.hisp80))
 
+# create df for analysis
 pop1980.foranalysis <- pop1980 %>%
-  left_join(county.avgpop1980, by = c("StateFIPS", "CountyFIPS")) %>%
-  mutate(whtcnctn = ifelse(`mean(prop.nhwht80)` > 0, prop.nhwht80 / `mean(prop.nhwht80)`, 0), # calculate concentration of each racial group for each census tract relative to the average of the county. If the average proportion in the county is zero, then the concentration is zero
-         blkcnctn = ifelse(`mean(prop.nhblk80)` > 0, prop.nhblk80 / `mean(prop.nhblk80)`, 0),
-         asiancnctn = ifelse(`mean(prop.asian80)` > 0, prop.asian80 / `mean(prop.asian80)`, 0),
-         hispcnctn = ifelse(`mean(prop.hisp80)` > 0, prop.hisp80 / `mean(prop.hisp80)`, 0)) %>%
+  mutate(whtcnctn = prop.nhwht80/avg.pop1980$`mean(prop.nhwht80)`,
+         blkcnctn = prop.nhblk80/avg.pop1980$`mean(prop.nhblk80)`,
+         asiancnctn = prop.asian80/avg.pop1980$`mean(prop.asian80)`,
+         hispcnctn = prop.hisp80/avg.pop1980$`mean(prop.hisp80)`) %>%
   select(TRACTID, StateFIPS, CountyFIPS, TractFIPS, 
          prop.nhwht80:prop.hisp80,
          whtcnctn:hispcnctn) %>%
   mutate(TRACTID = as.numeric(TRACTID))
 
-#### Read in 2010 census tract shapefiles and the spatial weights ####
-if(!file.exists("2010tractshape.Rdata")){
-  tract.shape.2010 <- readOGR(dsn = "TractS2010",
+# Read in 2010 census tract shapefiles and the spatial weights
+if(!file.exists("data/2010tractshape.Rdata")){
+  tract.shape.2010 <- readOGR(dsn = "data/TractS2010",
                               layer = "tract2010")
   
   save(tract.shape.2010, 
-       file = "2010tractshape.Rdata")
+       file = "data/2010tractshape.Rdata")
 }
-
 load("2010tractshape.Rdata") 
 
 tract.shape.clean <- tract.shape.2010[!tract.shape.2010@data$STATEFP10==72,] # filter out puerto rico 
@@ -67,7 +66,7 @@ xy <- coordinates(tract.shape.clean) # retrieve coordinates of tracts to calcula
 nb.d6 <- dnearneigh(xy, 0, 6, longlat = TRUE) # distance-based spatial influence at 6 kilometers
 nb.d6.list <- nb2listw(nb.d6, style = "W", zero.policy = TRUE) # create spatial weights for neighbors list. This is needed to calculate local moran's i
 
-# create data frame to use to calculate local moran's i
+# create data frame that will be used to calculate local moran's i
 df.foranalysis <- tract.shape.clean@data %>% 
   mutate(TRACTID = as.numeric(as.character(TRACTID))) %>%
   left_join(pop1980.foranalysis, by = "TRACTID") %>%
@@ -81,7 +80,7 @@ df.foranalysis <- tract.shape.clean@data %>%
          hispcnctn = replace_na(hispcnctn, 0))
 
 # calculate local moran's i
-# create a dummy indicating TRUE if the census tract is a focal tract of a cluster and FALSE if the census tract is not a focal tract of a cluster
+# create a dummy indicating 1 if the census tract is a focal tract of a cluster and 0 if the census tract is not a focal tract of a cluster
 df.lm <- df.foranalysis %>%
   cbind(localmoran(x = df.foranalysis$prop.nhwht80, 
                    list = nb.d6.list, 
@@ -133,3 +132,4 @@ return(df.lm %>%
          rename(TRTID10 = TRACTID) %>% 
          select(TRTID10, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy))
 }
+
