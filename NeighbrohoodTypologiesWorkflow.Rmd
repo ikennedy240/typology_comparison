@@ -31,8 +31,8 @@ hannah <- hannah(df)
 df_full <- full_join(df, hannah, by = 'TRTID10')
 ian <- ian(df)
 df_full <- full_join(df_full, ian, by = 'TRTID10')
-#shihao <- shihao(df)
-#df_full <- inner_join(df_full, shihao, by = 'TRTID10')
+shihao <- shihao(df)
+df_full <- inner_join(df_full, shihao, by = 'TRTID10')
 df_full <- full_join(df, chetty, by = 'TRTID10')
 ```
 
