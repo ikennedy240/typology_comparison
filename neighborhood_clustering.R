@@ -132,4 +132,3 @@ return(df.lm %>%
          rename(TRTID10 = TRACTID) %>% 
          select(TRTID10, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy))
 }
-

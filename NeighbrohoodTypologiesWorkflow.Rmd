@@ -3,15 +3,37 @@ title: "Neighborhood Typologies Workflow"
 output: html_notebook
 ---
 
+```{r load dependencies}
+library(tidyverse) 
+source('proportion_typology.R')
+source('neighborhood_clustering.R')
+library(readstata13)
+library(haven) 
+```
 
-```{r}
-df <- read_csv(data)
-hannah <- hannaH(df)
+```{r load data}
+df <- read_csv("data/LTDB_Std_1980_fullcount.csv")
+# chetty_full <- read_csv('data/tract_outcomes.zip')
+# # chetty pre-process
+# # make TRTID10 var
+# # select some variables
+# chetty_reduced <- chetty_full %>% mutate(state = str_extract(str_c('0', state),'\\d\\d$'),
+#                                          county = str_extract(str_c('000', county),'\\d{3}$'),
+#                                          tract = str_extract(str_c('00000', tract),'\\d{6}$'),TRTID10 = as.numeric(str_c(state, county, tract))) %>% select(state, county, tract, TRTID10, jail_white_pooled_mean, jail_white_pooled_mean_se, jail_black_pooled_mean, jail_black_pooled_mean_se, jail_asian_pooled_mean, jail_asian_pooled_mean_se, jail_hisp_pooled_mean, jail_hisp_pooled_mean_se, kfr_top01_white_pooled_mean, kfr_top01_white_pooled_mean_se, kfr_top01_black_pooled_mean, kfr_top01_black_pooled_mean_se, kfr_top01_asian_pooled_mean, kfr_top01_asian_pooled_mean_se, kfr_top01_hisp_pooled_mean, kfr_top01_hisp_pooled_mean_se, kfr_white_pooled_mean, kfr_white_pooled_mean_se, kfr_black_pooled_mean, kfr_black_pooled_mean_se, kfr_asian_pooled_mean, kfr_asian_pooled_mean_se, kfr_hisp_pooled_mean, kfr_hisp_pooled_mean_se, teenbrth_white_female_mean, teenbrth_white_female_mean_se, teenbrth_black_female_mean, teenbrth_black_female_mean_se, teenbrth_asian_female_mean, teenbrth_asian_female_mean_se, teenbrth_hisp_female_mean, teenbrth_hisp_female_mean_se)
+# # write a csv
+# write_csv(chetty_reduced, 'data/chetty.csv')
+chetty <- read_csv('data/chetty.csv')
+```
+
+
+```{r prepare for analysis}
+hannah <- hannah(df)
+df_full <- full_join(df, hannah, by = 'TRTID10')
 ian <- ian(df)
-shihao <- shihao(df)
-
-chetty <- read(chetty)
-inner_join(all, by = GEOID)
+df_full <- full_join(df_full, ian, by = 'TRTID10')
+#shihao <- shihao(df)
+#df_full <- inner_join(df_full, shihao, by = 'TRTID10')
+df_full <- full_join(df, chetty, by = 'TRTID10')
 ```
 
 
