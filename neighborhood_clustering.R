@@ -2,8 +2,6 @@
 # CSSS 510 final project
 # Hannah Lee
 
-rm(list=ls())
-
 library(dplyr)
 library(withr)
 library(stringr)
