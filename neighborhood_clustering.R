@@ -57,7 +57,7 @@ if(!file.exists("data/2010tractshape.Rdata")){
   save(tract.shape.2010, 
        file = "data/2010tractshape.Rdata")
 }
-load("2010tractshape.Rdata") 
+load("data/2010tractshape.Rdata") 
 
 tract.shape.clean <- tract.shape.2010[!tract.shape.2010@data$STATEFP10==72,] # filter out puerto rico 
 xy <- coordinates(tract.shape.clean) # retrieve coordinates of tracts to calculate spatial distance 
