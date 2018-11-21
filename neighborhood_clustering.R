@@ -57,7 +57,7 @@ if(!file.exists("data/2010tractshape.Rdata")){
   save(tract.shape.2010, 
        file = "data/2010tractshape.Rdata")
 }
-load("2010tractshape.Rdata") 
+load("data/2010tractshape.Rdata") 
 
 tract.shape.clean <- tract.shape.2010[!tract.shape.2010@data$STATEFP10==72,] # filter out puerto rico 
 xy <- coordinates(tract.shape.clean) # retrieve coordinates of tracts to calculate spatial distance 
@@ -124,9 +124,9 @@ df.lm <- df.foranalysis %>%
            `hisp.lm.pr(z>0)`<0.05 & 
            `hisp.lm.Z.Ii` > 0, 1, 0),
          hisp.clst.dmmy = replace_na(hisp.clst.dmmy, 0)) %>%
-  select(STATEFP10:TractFIPS, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy)
+  select(STATEFP10:TractFIPS, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy, starts_with('prop'))
 
 return(df.lm %>% 
          rename(TRTID10 = TRACTID) %>% 
-         select(TRTID10, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy))
+         select(TRTID10, wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy, starts_with('prop')))
 }

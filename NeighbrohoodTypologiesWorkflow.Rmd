@@ -7,6 +7,7 @@ output: html_notebook
 library(tidyverse) 
 source('proportion_typology.R')
 source('neighborhood_clustering.R')
+source('Location_Quotient.R')
 library(readstata13)
 library(haven) 
 ```
@@ -33,11 +34,21 @@ ian <- ian(df)
 df_full <- full_join(df_full, ian, by = 'TRTID10')
 shihao <- shihao(df)
 df_full <- inner_join(df_full, shihao, by = 'TRTID10')
-df_full <- full_join(df, chetty, by = 'TRTID10')
+df_full <- full_join(df_full, chetty, by = 'TRTID10')
 ```
 
 
-```{r}
+```{r modeling teen births}
+model <- glm(dv1 ~ ian + covariates?)
+```
+
+
+```{r modeling incarceration}
+model <- glm(dv1 ~ ian + covariates?)
+```
+
+
+```{r modeling probability of reaching top 1%}
 model <- glm(dv1 ~ ian + covariates?)
 ```
 

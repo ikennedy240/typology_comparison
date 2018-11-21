@@ -5,8 +5,6 @@
 library(tidyverse)
 library(readr)
 
-df <- read_csv("LTDB_Std_1980_fullcount.csv") # Loading data
-
 # Calculating the proportion of tract race population to tract population
 
 shihao <- function(df) {
@@ -54,5 +52,5 @@ df <-
 
 # Return the results
 return(df %>%
-         select(TRTID10, LQ_white_80, LQ_balck_80, LQ_hispanic_80, LQ_native_80, LQ_asian_80))
+         select(TRTID10, LQ_white_80, LQ_black_80, LQ_hispanic_80, LQ_native_80, LQ_asian_80))
 }
