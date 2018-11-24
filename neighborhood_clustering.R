@@ -16,7 +16,7 @@ library(rgdal)
 library(spdep)
 
 
-hannah <- function(df){
+nh_cluster <- function(df){
 #### Read in 1980 decennial census counts ####
 pop1980 <- df %>% # there were 59,187 census tracts in 1980
   select(TRTID10:NHBLK80, ASIAN80, HISP80) %>%

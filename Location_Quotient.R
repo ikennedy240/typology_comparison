@@ -7,7 +7,7 @@ library(readr)
 
 # Calculating the proportion of tract race population to tract population
 
-shihao <- function(df) {
+l_quotient <- function(df) {
   
 df <-                            
   df %>%

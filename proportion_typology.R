@@ -4,7 +4,7 @@ library(tidyverse)
 #df <- full_join(df, df_10['tractid'], by = c('TRTID10'='tractid')) %>% 
 #  mutate_if(is.numeric, funs(replace(., is.na(.), 0)))
 
-ian <- function(df){
+race_typology <- function(df){
 columns <- c("TRTID10","POP80", "NHWHT80","NHBLK80","NTV80","ASIAN80","HISP80") # set columns to grab
 labels <- c("TRTID10","pop_full", 'white','black','native','asian','latinx') # set labels to use
 re_cols <- c('white','black','native','asian','latinx') # subset of just race and ethnicity columns
