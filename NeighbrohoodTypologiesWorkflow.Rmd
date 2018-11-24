@@ -20,15 +20,25 @@ load_chetty <- function(){
     # chetty pre-process
     # make TRTID10 var
     # select some variables
+<<<<<<< HEAD
     chetty <- chetty_full %>%  # take the atlas
+=======
+    chetty_reduced <- chetty_full %>%  # take the atlas
+>>>>>>> d7204cb789d8596ee9221e7dabc32a9af250cb7e
       mutate(state = str_extract(str_c('0', state),'\\d\\d$'), # make a tract id var
              county = str_extract(str_c('000', county),'\\d{3}$'),
              tract = str_extract(str_c('00000', tract),'\\d{6}$'),
              TRTID10 = as.numeric(str_c(state, county, tract))) %>% 
       # select the outcomes of interest
+<<<<<<< HEAD
       select(state, county, tract, TRTID10, jail_white_pooled_mean, jail_white_pooled_mean_se, jail_black_pooled_mean, jail_black_pooled_mean_se, jail_asian_pooled_mean, jail_asian_pooled_mean_se, jail_hisp_pooled_mean, jail_hisp_pooled_mean_se, kfr_top01_white_pooled_mean, kfr_top01_white_pooled_mean_se, kfr_top01_black_pooled_mean, kfr_top01_black_pooled_mean_se, kfr_top01_asian_pooled_mean, kfr_top01_asian_pooled_mean_se, kfr_top01_hisp_pooled_mean, kfr_top01_hisp_pooled_mean_se, kfr_top20_white_pooled_mean, kfr_top20_white_pooled_mean_se, kfr_top20_black_pooled_mean, kfr_top20_black_pooled_mean_se, kfr_top20_asian_pooled_mean, kfr_top20_asian_pooled_mean_se, kfr_top20_hisp_pooled_mean, kfr_top20_hisp_pooled_mean_se, kfr_white_pooled_mean, kfr_white_pooled_mean_se, kfr_black_pooled_mean, kfr_black_pooled_mean_se, kfr_asian_pooled_mean, kfr_asian_pooled_mean_se, kfr_hisp_pooled_mean, kfr_hisp_pooled_mean_se, teenbrth_white_female_mean, teenbrth_white_female_mean_se, teenbrth_black_female_mean, teenbrth_black_female_mean_se, teenbrth_asian_female_mean, teenbrth_asian_female_mean_se, teenbrth_hisp_female_mean, teenbrth_hisp_female_mean_se)
     # write a csv
     write_csv(chetty, 'data/chetty.csv')
+=======
+      select(state, county, tract, TRTID10, jail_white_pooled_mean, jail_white_pooled_mean_se, jail_black_pooled_mean, jail_black_pooled_mean_se, jail_asian_pooled_mean, jail_asian_pooled_mean_se, jail_hisp_pooled_mean, jail_hisp_pooled_mean_se, kfr_top01_white_pooled_mean, kfr_top01_white_pooled_mean_se, kfr_top01_black_pooled_mean, kfr_top01_black_pooled_mean_se, kfr_top01_asian_pooled_mean, kfr_top01_asian_pooled_mean_se, kfr_top01_hisp_pooled_mean, kfr_top01_hisp_pooled_mean_se, kfr_white_pooled_mean, kfr_white_pooled_mean_se, kfr_black_pooled_mean, kfr_black_pooled_mean_se, kfr_asian_pooled_mean, kfr_asian_pooled_mean_se, kfr_hisp_pooled_mean, kfr_hisp_pooled_mean_se, teenbrth_white_female_mean, teenbrth_white_female_mean_se, teenbrth_black_female_mean, teenbrth_black_female_mean_se, teenbrth_asian_female_mean, teenbrth_asian_female_mean_se, teenbrth_hisp_female_mean, teenbrth_hisp_female_mean_se)
+    # write a csv
+    write_csv(chetty_reduced, 'data/chetty.csv')
+>>>>>>> d7204cb789d8596ee9221e7dabc32a9af250cb7e
   } else { # if we do have a chetty file, load it
   chetty <- read_csv('data/chetty.csv')
   }
@@ -64,7 +74,11 @@ model <- glm(dv1 ~ ian + covariates?)
 model <- glm(dv1 ~ ian + covariates?)
 ```
 
+<<<<<<< HEAD
 Modeling the probability of Black children born/living in the tract in 1980 reaching the top 20% of incomes in 2010 based on our typologies and neighborhood racial proportions.
+=======
+Modeling the probability of reaching the top 1% of incomes based on our typologies and neighborhood racial proportions.
+>>>>>>> d7204cb789d8596ee9221e7dabc32a9af250cb7e
 ```{r modeling probability of reaching top 1%}
 model_prop <- betareg( ,data = df_full)
 names(df_full)
