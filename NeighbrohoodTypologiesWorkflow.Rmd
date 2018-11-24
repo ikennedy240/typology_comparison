@@ -4,37 +4,54 @@ output: html_notebook
 ---
 
 ```{r load dependencies}
-library(tidyverse) 
 source('proportion_typology.R')
 source('neighborhood_clustering.R')
 source('Location_Quotient.R')
 library(readstata13)
 library(haven) 
+library(betareg)
+library(tidyverse)
 ```
 
-```{r load data}
-df <- read_csv("data/LTDB_Std_1980_fullcount.csv")
-# chetty_full <- read_csv('data/tract_outcomes.zip')
-# # chetty pre-process
-# # make TRTID10 var
-# # select some variables
-# chetty_reduced <- chetty_full %>% mutate(state = str_extract(str_c('0', state),'\\d\\d$'),
-#                                          county = str_extract(str_c('000', county),'\\d{3}$'),
-#                                          tract = str_extract(str_c('00000', tract),'\\d{6}$'),TRTID10 = as.numeric(str_c(state, county, tract))) %>% select(state, county, tract, TRTID10, jail_white_pooled_mean, jail_white_pooled_mean_se, jail_black_pooled_mean, jail_black_pooled_mean_se, jail_asian_pooled_mean, jail_asian_pooled_mean_se, jail_hisp_pooled_mean, jail_hisp_pooled_mean_se, kfr_top01_white_pooled_mean, kfr_top01_white_pooled_mean_se, kfr_top01_black_pooled_mean, kfr_top01_black_pooled_mean_se, kfr_top01_asian_pooled_mean, kfr_top01_asian_pooled_mean_se, kfr_top01_hisp_pooled_mean, kfr_top01_hisp_pooled_mean_se, kfr_white_pooled_mean, kfr_white_pooled_mean_se, kfr_black_pooled_mean, kfr_black_pooled_mean_se, kfr_asian_pooled_mean, kfr_asian_pooled_mean_se, kfr_hisp_pooled_mean, kfr_hisp_pooled_mean_se, teenbrth_white_female_mean, teenbrth_white_female_mean_se, teenbrth_black_female_mean, teenbrth_black_female_mean_se, teenbrth_asian_female_mean, teenbrth_asian_female_mean_se, teenbrth_hisp_female_mean, teenbrth_hisp_female_mean_se)
-# # write a csv
-# write_csv(chetty_reduced, 'data/chetty.csv')
-chetty <- read_csv('data/chetty.csv')
+```{r helper function to load chetty data}
+load_chetty <- function(){
+  if(!file.exists('data/chetty.csv')){ # if we don't have a chetty file
+    chetty_full <- read_csv('data/tract_outcomes.zip') # load the fully Atlas
+    # chetty pre-process
+    # make TRTID10 var
+    # select some variables
+    chetty <- chetty_full %>%  # take the atlas
+      mutate(state = str_extract(str_c('0', state),'\\d\\d$'), # make a tract id var
+             county = str_extract(str_c('000', county),'\\d{3}$'),
+             tract = str_extract(str_c('00000', tract),'\\d{6}$'),
+             TRTID10 = as.numeric(str_c(state, county, tract))) %>% 
+      # select the outcomes of interest
+      select(state, county, tract, TRTID10, jail_white_pooled_mean, jail_white_pooled_mean_se, jail_black_pooled_mean, jail_black_pooled_mean_se, jail_asian_pooled_mean, jail_asian_pooled_mean_se, jail_hisp_pooled_mean, jail_hisp_pooled_mean_se, kfr_top01_white_pooled_mean, kfr_top01_white_pooled_mean_se, kfr_top01_black_pooled_mean, kfr_top01_black_pooled_mean_se, kfr_top01_asian_pooled_mean, kfr_top01_asian_pooled_mean_se, kfr_top01_hisp_pooled_mean, kfr_top01_hisp_pooled_mean_se, kfr_top20_white_pooled_mean, kfr_top20_white_pooled_mean_se, kfr_top20_black_pooled_mean, kfr_top20_black_pooled_mean_se, kfr_top20_asian_pooled_mean, kfr_top20_asian_pooled_mean_se, kfr_top20_hisp_pooled_mean, kfr_top20_hisp_pooled_mean_se, kfr_white_pooled_mean, kfr_white_pooled_mean_se, kfr_black_pooled_mean, kfr_black_pooled_mean_se, kfr_asian_pooled_mean, kfr_asian_pooled_mean_se, kfr_hisp_pooled_mean, kfr_hisp_pooled_mean_se, teenbrth_white_female_mean, teenbrth_white_female_mean_se, teenbrth_black_female_mean, teenbrth_black_female_mean_se, teenbrth_asian_female_mean, teenbrth_asian_female_mean_se, teenbrth_hisp_female_mean, teenbrth_hisp_female_mean_se)
+    # write a csv
+    write_csv(chetty, 'data/chetty.csv')
+  } else { # if we do have a chetty file, load it
+  chetty <- read_csv('data/chetty.csv')
+  }
+  return(chetty)
+}
 ```
 
 
 ```{r prepare for analysis}
-hannah <- hannah(df)
-df_full <- full_join(df, hannah, by = 'TRTID10')
-ian <- ian(df)
-df_full <- full_join(df_full, ian, by = 'TRTID10')
-shihao <- shihao(df)
-df_full <- inner_join(df_full, shihao, by = 'TRTID10')
-df_full <- full_join(df_full, chetty, by = 'TRTID10')
+if(!file.exists('data/df_full.csv')){ # if we don't have saved data
+  df <- read_csv("data/LTDB_Std_1980_fullcount.csv") # get the 1980 census data
+  chetty <- load_chetty() # load a reduced version of chetty's atlas
+  nh_cluster <- nh_cluster(df) # run Hannah's neighborhood clustering algo and join to census
+  df_full <- full_join(df, nh_cluster, by = 'TRTID10')
+  race_typology <- race_typology(df) # run Ian's neighborhood typology and joing to census
+  df_full <- full_join(df_full, race_typology, by = 'TRTID10')
+  l_quotient <- l_quotient(df) # run Shihao's location quotient algo and joing to census
+  df_full <- inner_join(df_full, l_quotient, by = 'TRTID10')
+  df_full <- full_join(df_full, chetty, by = 'TRTID10') # join all with census
+  df_full %>% write_csv('data/df_full.csv')  # and write to csv
+} else{ # otherwise read from file
+  df_full <- read_csv('data/df_full.csv')
+}
 ```
 
 
@@ -47,9 +64,10 @@ model <- glm(dv1 ~ ian + covariates?)
 model <- glm(dv1 ~ ian + covariates?)
 ```
 
-
+Modeling the probability of Black children born/living in the tract in 1980 reaching the top 20% of incomes in 2010 based on our typologies and neighborhood racial proportions.
 ```{r modeling probability of reaching top 1%}
-model <- glm(dv1 ~ ian + covariates?)
+model_prop <- betareg( ,data = df_full)
+names(df_full)
 ```
 
 Goodness of fit tests
