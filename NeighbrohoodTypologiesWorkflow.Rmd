@@ -35,6 +35,18 @@ load_chetty <- function(){
   }
   return(chetty)
 }
+prep_avp_df <- function(y, fitted_values, bins, model_name){
+  # grab the model predictions and actual values
+  inter_df <- tibble(actual = y, 
+                     predicted = fitted_values) %>% 
+    # bin the values
+    mutate(x_bins = ntile(actual, bins), 
+           y_bins =ntile(predicted, bins))
+  # group by bins and return averages
+  return(bind_cols(inter_df %>% group_by(x_bins) %>% summarise(actual = mean(actual)),
+            inter_df %>% group_by(y_bins) %>% summarise(predicted = mean(actual))) %>% mutate(model = model_name))
+}
+
 ```
 
 
@@ -83,17 +95,6 @@ Actual vs. Predicted Plot of teen birth rate model
 ```{r actual vs. predicted plot for teen birth rate}
 bins = 40 # set the number of bins
  # function which takes a model and spits out a dataframe formatted to make an avp plot
-prep_avp_df <- function(model, bins, model_name){
-  # grab the model predictions and actual values
-  inter_df <- tibble(actual = model$y, predicted = model$fitted.values) %>% 
-    # bin the values
-    mutate(x_bins = ntile(actual, bins), 
-           y_bins =ntile(predicted, bins))
-  # group by bins and return averages
-  return(bind_cols(inter_df %>% group_by(x_bins) %>% summarise(actual = mean(actual)),
-            inter_df %>% group_by(y_bins) %>% summarise(predicted = mean(actual))) %>% mutate(model = model_name))
-  
-}
 
 # Plot the result of each model
 plot_df_brth <- bind_rows(prep_avp_df(model_brth_cluster, bins, "cluster"),
@@ -140,18 +141,7 @@ Actual vs predicted plots to check in sample fit for incarceration DV
 ```{r actual vs predicted plots for incarceration}
 bins = 40 # set the number of bins
  # function which takes a model and spits out a dataframe formatted to make an avp plot
-prep_avp_df <- function(model, bins, model_name){
-  # grab the model predictions and actual values
-  inter_df <- tibble(actual = as.vector(model@y), 
-                     predicted = as.vector(model@fitted.values)) %>% 
-    # bin the values
-    mutate(x_bins = ntile(actual, bins), 
-           y_bins =ntile(predicted, bins))
-  # group by bins and return averages
-  return(bind_cols(inter_df %>% group_by(x_bins) %>% summarise(actual = mean(actual)),
-            inter_df %>% group_by(y_bins) %>% summarise(predicted = mean(actual))) %>% mutate(model = model_name))
-  
-}
+
 # row bind the results for each model
 plot_df <- bind_rows(prep_avp_df(model_inc_cluster, bins, "cluster"),
           prep_avp_df(model_inc_lq, bins, "location quotient"),
@@ -186,22 +176,12 @@ Actual vs predicted plots to check in-sample fit
 ```{r actual vs predicted plots}
 bins = 40 # set the number of bins
  # function which takes a model and spits out a dataframe formatted to make an avp plot
-prep_avp_df <- function(model, bins, model_name){
-  # grab the model predictions and actual values
-  inter_df <- tibble(actual = model$y, predicted = model$fitted.values) %>% 
-    # bin the values
-    mutate(x_bins = ntile(actual, bins), 
-           y_bins =ntile(predicted, bins))
-  # group by bins and return averages
-  return(bind_cols(inter_df %>% group_by(x_bins) %>% summarise(actual = mean(actual)),
-            inter_df %>% group_by(y_bins) %>% summarise(predicted = mean(actual))) %>% mutate(model = model_name))
-  
-}
+
 # row bind the results for each model
-plot_df <- bind_rows(prep_avp_df(model_cluster, bins, 'cluster'),
-          prep_avp_df(model_lq, bins, 'location quotient'),
-          prep_avp_df(model_ntype, bins, 'neighborhood type'),
-          prep_avp_df(model_prop, bins, 'racial proportion'))
+plot_df <- bind_rows(prep_avp_df(model_cluster$y, model_cluster$fitted.values, bins, 'cluster'),
+          prep_avp_df(model_lq$y, model_lq$fitted.values, bins, 'location quotient'),
+          prep_avp_df(model_ntype$y, model_ntype$fitted.values, bins, 'neighborhood type'),
+          prep_avp_df(model_prop$y, model_prop$fitted.values, bins, 'racial proportion'))
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model))+
     geom_point(alpha = .5)+
