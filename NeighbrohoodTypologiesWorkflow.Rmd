@@ -104,7 +104,6 @@ plot_df_brth <- bind_rows(prep_avp_df(model_brth_cluster, bins, "cluster"),
 ggplot(plot_df_brth, aes(x = predicted, y = actual, color = model)) +
   geom_point(alpha = .5)+
   geom_abline(aes(slope = 1, intercept = 0), color = 'red')
-
 ```
 
 Modeling fraction incarcerated on April 1st 2010. 
