@@ -80,7 +80,6 @@ model_ntype <- betareg(kfr_top20_pooled_pooled_mean ~ collapsed_type, data = top
 model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, data = top_20 %>% sample_n(10000))
 
 model_cluster <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = top_20)
-names(top_20)
 ```
 
 Actual vs predicted plots to check in-sample fit
