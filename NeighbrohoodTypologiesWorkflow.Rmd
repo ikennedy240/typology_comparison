@@ -55,9 +55,56 @@ if(!file.exists('data/df_full.csv')){ # if we don't have saved data
 }
 ```
 
-
+Model: teen female birth rate in 2010
 ```{r modeling teen births}
-model <- glm(dv1 ~ ian + covariates?)
+# Selecting the dependent and independent variables and merge into a dataset for teen birth model
+teenbirth <- 
+  df_full %>%
+  select(intersect(starts_with("teenbrth"), ends_with("mean")), starts_with("prop."), 
+         starts_with("LQ"), ends_with("dmmy"),contains("type")) %>%
+  mutate_all(funs(replace(., is.na(.), 0))) %>%
+  mutate(teenbrth_pooled_female_mean = teenbrth_white_female_mean + teenbrth_black_female_mean +
+           teenbrth_asian_female_mean + teenbrth_hispanic_female_mean) %>%
+  filter(teenbrth_pooled_female_mean > 0)
+
+# Using different independent variables to run the model
+model_brth_prop <- betareg(teenbrth_pooled_female_mean ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80,
+                           data = teenbirth)
+
+model_brth_LQ <- betareg(teenbrth_pooled_female_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, 
+                         data = teenbirth)
+
+model_brth_cluster <- betareg(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = teenbirth)
+  
+model_brth_ntype <- betareg(teenbrth_pooled_female_mean ~ collapsed_type, data = teenbirth)
+```
+
+Actual vs. Predicted Plot of teen birth rate model
+```{r actual vs. predicted plot for teen birth rate}
+bins = 40 # set the number of bins
+ # function which takes a model and spits out a dataframe formatted to make an avp plot
+prep_avp_df <- function(model, bins, model_name){
+  # grab the model predictions and actual values
+  inter_df <- tibble(actual = model$y, predicted = model$fitted.values) %>% 
+    # bin the values
+    mutate(x_bins = ntile(actual, bins), 
+           y_bins =ntile(predicted, bins))
+  # group by bins and return averages
+  return(bind_cols(inter_df %>% group_by(x_bins) %>% summarise(actual = mean(actual)),
+            inter_df %>% group_by(y_bins) %>% summarise(predicted = mean(actual))) %>% mutate(model = model_name))
+  
+}
+
+# Plot the result of each model
+plot_df_brth <- bind_rows(prep_avp_df(model_brth_cluster, bins, "cluster"),
+                          prep_avp_df(model_brth_LQ, bins, "location quotient"),
+                          prep_avp_df(model_brth_ntype, bins, "neighborhood type"),
+                          prep_avp_df(model_brth_prop, bins, "racial proportion"))
+
+ggplot(plot_df_brth, aes(x = predicted, y = actual, color = model)) +
+  geom_point(alpha = .5)+
+  geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+
 ```
 
 Modeling fraction incarcerated on April 1st 2010. 
