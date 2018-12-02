@@ -35,6 +35,7 @@ load_chetty <- function(){
   }
   return(chetty)
 }
+# avp helper function
 prep_avp_df <- function(y, fitted_values, bins, model_name){
   # grab the model predictions and actual values
   inter_df <- tibble(actual = y, 
@@ -47,7 +48,24 @@ prep_avp_df <- function(y, fitted_values, bins, model_name){
             inter_df %>% group_by(y_bins) %>% summarise(predicted = mean(actual))) %>% mutate(model = model_name))
 }
 
+mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = NULL){
+  if(is.null(residuals)){
+    if(length(model$residuals)!=0){
+      residuals <- model$residuals
+    }
+    else if (!is.null(fitted_values)){
+      residuals <- y - fitted_values
+    } else if(is.null(fitted_values)){
+      residuals <- model$y - model$fitted.values
+    } else {
+      stop("you need to supply a model with residuals or y and fitted values")
+    }
+  }
+  return(sum(residuals^2)/length(residuals))
+}
 ```
+
+
 
 
 ```{r prepare for analysis}
@@ -171,6 +189,7 @@ model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + L
 
 model_cluster <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = top_20)
 model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
+knitr::kable(tibble(name = names(coef(model_cluster_prop)), pe = coef(model_cluster_prop), se = sqrt(diag(vcov(model_cluster_prop)))))
 ```
 
 Actual vs predicted plots to check in-sample fit
@@ -183,17 +202,17 @@ plot_df <- bind_rows(prep_avp_df(model_cluster$y, model_cluster$fitted.values, b
           prep_avp_df(model_lq$y, model_lq$fitted.values, bins, 'location quotient'),
           prep_avp_df(model_ntype$y, model_ntype$fitted.values, bins, 'neighborhood type'),
           prep_avp_df(model_prop$y, model_prop$fitted.values, bins, 'racial proportion'),
-          prep_avp_df(model_cluster_prop$y, model_cluster_prop$fitted.values, bins, 'racial proportion + clusters'))
+          prep_avp_df(model_cluster_prop$y, model_cluster_prop$fitted.values, bins, 'racial proportion + clusters')) %>% mutate(race_plus_clusters = if_else(model == 'racial proportion + clusters', TRUE, FALSE))
 
 
 # plot comparison
-ggplot(plot_df, aes(x = predicted, y = actual, color = model))+
-    geom_point(alpha = .5)+
+ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters))+
+    geom_point(alpha = .5, size = 2.5)+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 
 
 clust_test <- top_20 %>% select(ends_with('dmmy'), TRTID10) %>% 
-  mutate(x = model_cluster$fitted.values, y =model_cluster$y) %>%
+  mutate(x = model_cluster_prop$fitted.values, y =model_cluster_prop$y) %>%
   gather(dummy_type, exists, -TRTID10, -x, -y) %>% 
   mutate(clusters = if_else(exists==1,dummy_type, '')) %>% 
   spread(dummy_type, clusters, fill = '') %>% group_by(TRTID10) %>%
@@ -201,11 +220,25 @@ clust_test <- top_20 %>% select(ends_with('dmmy'), TRTID10) %>%
          dummy_type = if_else(dummy_type=='', 'none', dummy_type)) %>% 
   select(TRTID10, dummy_type, x, y) %>% inner_join(top_20)
   
-ggplot(clust_test, aes(x, y, color = dummy_type))+
-    geom_boxplot()+
+ggplot(clust_test 
+       %>% filter(str_detect(dummy_type,'blk'))
+       , aes(x, y, color = dummy_type))+
+    geom_point(aes(alpha = prop.nhblk80))+
+    facet_wrap(~dummy_type)+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+    
 
 clust_test %>% count(dummy_type)
+tibble(
+  mean = mse_calc(fitted_values = mean(top_20$kfr_top20_pooled_pooled_mean), y = top_20$kfr_top20_pooled_pooled_mean),
+  cluster = mse_calc(model_cluster),
+  loc_quotient = mse_calc(model_lq),
+  neighborhood_type = mse_calc(model_ntype),
+  proportion = mse_calc(model_prop),
+  cluster_prop = mse_calc(model_cluster_prop)
+) %>% gather() %>%
+  ggplot(aes(value, key))+
+    geom_point()
 ```
 
 
