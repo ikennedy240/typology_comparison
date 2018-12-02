@@ -63,6 +63,36 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
   }
   return(sum(residuals^2)/length(residuals)) # return the mse
 }
+
+cv_model <- function(x, y, k, model, scoring_function, ...){
+  model <- match.fun(model)
+  scoring_function <- match.fun(scoring_function)
+  x_store <- x
+  if(any(sapply(x, typeof) %in% c('character', 'factor'))){ # if any are factor variables
+    print("making dummies")
+    vars <- sapply(x, typeof)[sapply(x, typeof) %in% c('character', 'factor')] # grab them
+    var_form <- formula(paste('~',paste(names(vars), collapse = ' + '))) # make a formula
+    x <- x %>% 
+      select(names(sapply(x, typeof)[!sapply(x, typeof) %in% c('character', 'factor')])) %>%
+      bind_cols(as_tibble(model.matrix(var_form ,data = x))) %>% select(-`(Intercept)`) # then dummify them
+    x_store <- x
+  }
+  # split data k ways
+  folds = sample.int(k, size = length(y), replace = TRUE)
+  score = c()
+  for(i in 1:k){
+    x <- x_store
+    x <- x[!colSums(x[folds==i,])==0]
+    x <- x[!colSums(x[!folds==i,])==0]
+    x_fold <-  x[folds!=i,]
+    y_fold <-  y[folds!=i]
+    df <- x_fold %>% mutate(y = y_fold)
+    fold_model <- model(y ~ ., data = df)
+    score[i] <- scoring_function(fitted_values = predict(fold_model, x[folds==i,], type = 'response'), y = y[folds == i])
+  }
+  mean(score)
+}
+
 ```
 
 
@@ -156,7 +186,11 @@ model_inc_lq <- vglm(cbind(jail_count, nonjail_count) ~ LQ_white_80 + LQ_black_8
 
 model_inc_cluster_prop <- vglm(cbind(jail_count, nonjail_count) ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, 
                                data = incar,
-                               family = betabinomial)
+                               family = betabinomial) 
+
+null_model <- vglm(cbind(jail_count, nonjail_count) ~ 1, 
+                               data = incar,
+                               family = betabinomial) 
 ```
 
 Actual vs predicted plots to check in sample fit for incarceration DV
@@ -178,7 +212,7 @@ ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 
 # mse calc
-mean_guess <- mse_calc(fitted_values = mean(incar$jail_pooled_pooled_mean), y = incar$jail_pooled_pooled_mean) # assign the mean guess to a variable
+mean_guess <- mse_calc(residuals = null_model@residuals) # assign the mean guess to a variable
 tibble( # make a tibble
   cluster = mse_calc(residuals = model_inc_cluster@residuals), # then for each model
   loc_quotient = mse_calc(residuals = model_inc_lq@residuals),
@@ -189,11 +223,11 @@ tibble( # make a tibble
   ggplot(aes(value, key, color = key))+ # and plot
     geom_point()+
     geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
-    theme_minimal()+
+    theme_minimal()+ 
     theme(legend.position = 'none')+
     ggtitle("Mean Squared Errors for different Models predicting Fraction Incarcerated",
             "Red line indicates MSE for null model (always guessing the mean)")
-    
+     
 ```
 
 
@@ -270,11 +304,44 @@ tibble( # make a tibble
     
 ```
 
+```{r same as above but with CV}
 
-Goodness of fit tests
 
-```{r}
-make_cool_visualization(model, ian)
+mean_guess <- mse_calc(fitted_values = mean(top_20$kfr_top20_pooled_pooled_mean), y = top_20$kfr_top20_pooled_pooled_mean) # assign the mean guess to a variable
+
+model_prop <- betareg(kfr_top20_pooled_pooled_mean ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
+
+model_ntype <- betareg(kfr_top20_pooled_pooled_mean ~ collapsed_type, data = top_20)
+
+# this one sometimes doesn't converge when I use the whole set, so I use a sample
+model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, data = top_20 %>% sample_n(10000))
+
+model_cluster <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = top_20)
+model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
+
+y = top_20[['kfr_top20_pooled_pooled_mean']]
+cv_top_20 <- tibble( # make a tibble
+  cluster = cv_model(x = top_20 %>% select(wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy),
+             y = y, 
+             k = k, 
+             model = 'betareg', 
+             scoring_function = 'mse_calc'), # then for each model
+  loc_quotient = cv_model(top_20 %>% select(LQ_white_80, LQ_black_80, LQ_asian_80, LQ_native_80),
+                          y,k, 'betareg', 'mse_calc'),
+  neighborhood_type = cv_model(top_20['collapsed_type'],y,k, 'betareg', 'mse_calc'),
+  proportion = cv_model(top_20 %>% select(prop.nhwht80, prop.nhblk80, prop.asian80, prop.hisp80),
+                        y,k, 'betareg', 'mse_calc'),
+  cluster_prop = cv_model(top_20 %>% select(wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy,prop.nhwht80, prop.nhblk80, prop.asian80, prop.hisp80),
+                          y,k, 'betareg', 'mse_calc')
+) %>% gather()# gather to long format
+ggplot(cv_top_20, aes(value, key, color = key))+ # and plot
+  geom_point()+
+  geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
+  theme_minimal()+
+  theme(legend.position = 'none')+
+  ggtitle("Mean Squared Errors for different Models predicting Probability of entering top 20%",
+          "Red line indicates MSE for null model (always guessing the mean)")
+
 ```
 
 
