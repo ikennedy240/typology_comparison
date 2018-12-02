@@ -151,11 +151,12 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
           prep_avp_df(as.vector(model_inc_lq@y), as.vector(model_inc_lq@fitted.values), bins, "location quotient"),
           prep_avp_df(as.vector(model_inc_ntype@y), as.vector(model_inc_ntype@fitted.values), bins, "neighborhood type"),
           prep_avp_df(as.vector(model_inc_prop@y), as.vector(model_inc_prop@fitted.values), bins, "racial proportion"),
-          prep_avp_df(as.vector(model_inc_cluster_prop@y), as.vector(model_inc_cluster_prop@fitted.values), bins, "clusters + racial proportion"))
+          prep_avp_df(as.vector(model_inc_cluster_prop@y), as.vector(model_inc_cluster_prop@fitted.values), bins, "clusters + racial proportion")) %>% 
+  mutate(race_plus_clusters = if_else(model == "clusters + racial proportion", TRUE, FALSE)) # this mutate line adds a dummy for the model of interest
 
 # plot comparison
-ggplot(plot_df, aes(x = predicted, y = actual, color = model))+
-    geom_point(alpha = .5)+
+ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
+    geom_point(alpha = .5, size = 2.5) +
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 ```
 
