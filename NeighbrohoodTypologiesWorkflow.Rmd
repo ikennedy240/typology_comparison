@@ -135,6 +135,10 @@ model_inc_cluster <- vglm(cbind(jail_count, nonjail_count) ~ wht.clst.dmmy + blk
 model_inc_lq <- vglm(cbind(jail_count, nonjail_count) ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, 
                      data = incar,
                      family = betabinomial)
+
+model_inc_cluster_prop <- vglm(cbind(jail_count, nonjail_count) ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, 
+                               data = incar,
+                               family = betabinomial)
 ```
 
 Actual vs predicted plots to check in sample fit for incarceration DV
@@ -143,10 +147,12 @@ bins = 40 # set the number of bins
  # function which takes a model and spits out a dataframe formatted to make an avp plot
 
 # row bind the results for each model
-plot_df <- bind_rows(prep_avp_df(model_inc_cluster, bins, "cluster"),
-          prep_avp_df(model_inc_lq, bins, "location quotient"),
-          prep_avp_df(model_inc_ntype, bins, "neighborhood type"),
-          prep_avp_df(model_inc_prop, bins, "racial proportion"))
+plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model_inc_cluster@fitted.values), bins, "cluster"),
+          prep_avp_df(as.vector(model_inc_lq@y), as.vector(model_inc_lq@fitted.values), bins, "location quotient"),
+          prep_avp_df(as.vector(model_inc_ntype@y), as.vector(model_inc_ntype@fitted.values), bins, "neighborhood type"),
+          prep_avp_df(as.vector(model_inc_prop@y), as.vector(model_inc_prop@fitted.values), bins, "racial proportion"),
+          prep_avp_df(as.vector(model_inc_cluster_prop@y), as.vector(model_inc_cluster_prop@fitted.values), bins, "clusters + racial proportion"))
+
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model))+
     geom_point(alpha = .5)+
