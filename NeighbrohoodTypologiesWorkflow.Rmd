@@ -64,35 +64,62 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
   return(sum(residuals^2)/length(residuals)) # return the mse
 }
 
-cv_model <- function(x, y, k, model, scoring_function, ...){
+cv_model(formula_call =cbind(jail_count, nonjail_count) ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80
+         , model = 'vglm', data = incar, k = 5, family = betabinomial)
+cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function = 'mse_calc', ...){
   model <- match.fun(model)
   scoring_function <- match.fun(scoring_function)
-  x_store <- x
+  data <- data %>% select(all.vars(formula_call))
+  x <- data %>% select(all.vars(update(formula_call, 1 ~ .)))
   if(any(sapply(x, typeof) %in% c('character', 'factor'))){ # if any are factor variables
     print("making dummies")
-    vars <- sapply(x, typeof)[sapply(x, typeof) %in% c('character', 'factor')] # grab them
-    var_form <- formula(paste('~',paste(names(vars), collapse = ' + '))) # make a formula
+    all_vars <- all.vars(update(formula_call, 1 ~ .))
+    vars <- names(sapply(x, typeof)[sapply(x, typeof) %in% c('character', 'factor')]) # grab them
+    var_form <- formula(paste('~',paste(vars, collapse = ' + '))) # make a formula
     x <- x %>% 
       select(names(sapply(x, typeof)[!sapply(x, typeof) %in% c('character', 'factor')])) %>%
-      bind_cols(as_tibble(model.matrix(var_form ,data = x))) %>% select(-`(Intercept)`) # then dummify them
-    x_store <- x
+      bind_cols(data.frame(model.matrix(var_form ,data = x))) %>% select(-X.Intercept.) # then dummify them
+    y <- data %>% select(all.vars(update(formula_call, . ~ 1)))
+    data = bind_cols(y,x)
+    if(length(all.vars(update(formula_call, . ~ 1))) >1){
+      formula_call <- as.formula(paste('cbind(', paste(all.vars(update(formula_call, . ~ 1)), collapse = ','), 
+                          ') ~', 
+                          paste(all_vars[all_vars!=vars], collapse = '+'), 
+                          ifelse(any(all_vars!=vars), '+',''), 
+                          paste(make.names(names(x)), collapse = '+')))
+    } else {
+      formula_call <- as.formula(paste(all.vars(update(formula_call, . ~ 1)), 
+                          '~', 
+                          paste(all_vars[all_vars!=vars], collapse = '+'), 
+                          ifelse(any(all_vars!=vars), '+',''), 
+                          paste(make.names(names(x)), collapse = '+')))
+    }
   }
   # split data k ways
-  folds = sample.int(k, size = length(y), replace = TRUE)
+  folds = sample.int(k, size = dim(x)[1], replace = TRUE)
   score = c()
   for(i in 1:k){
-    x <- x_store
-    x <- x[!colSums(x[folds==i,])==0]
-    x <- x[!colSums(x[!folds==i,])==0]
-    x_fold <-  x[folds!=i,]
-    y_fold <-  y[folds!=i]
-    df <- x_fold %>% mutate(y = y_fold)
-    fold_model <- model(y ~ ., data = df)
-    score[i] <- scoring_function(fitted_values = predict(fold_model, x[folds==i,], type = 'response'), y = y[folds == i])
+    df <- data
+    df <- df[!colSums(df[folds==i,])==0]
+    df <- df[!colSums(df[!folds==i,])==0]
+    df_fold <-  df[folds!=i,]
+    ivs <- all.vars(update(formula_call, 1 ~ .))
+    if(length(all.vars(update(formula_call, . ~ 1))) >1){
+      formula_call <- as.formula(paste('cbind(', paste(all.vars(update(formula_call, . ~ 1)), collapse = ','), 
+                          ') ~', paste(intersect(ivs, names(df)), collapse = '+')))
+    } else {
+      formula_call <- as.formula(paste(all.vars(update(formula_call, . ~ 1)), 
+                          '~', 
+                          paste(intersect(ivs, names(df)), collapse = '+')))
+    }
+    fold_model <- model(formula_call, data = df_fold, ...)
+    score[i] <- scoring_function(fitted_values = predict(fold_model, 
+                                                         df[folds==i,] %>% select(all.vars(update(formula_call, 1 ~ .))), 
+                                                         type = 'response'), 
+                                 y =  df[folds==i,] %>% select(all.vars(update(formula_call, . ~ 1))))
   }
   mean(score)
 }
-
 ```
 
 
@@ -168,6 +195,8 @@ incar <- df_full %>%
   filter(jail_count > 0)
 
 # fit models for proportion, ntype, clustering, and location quotient
+
+
 model_inc_prop <- vglm(cbind(jail_count, nonjail_count) ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, 
                        data = incar, 
                        family = betabinomial)
@@ -243,7 +272,7 @@ model_prop <- betareg(kfr_top20_pooled_pooled_mean ~ prop.nhwht80 + prop.nhblk80
 
 model_ntype <- betareg(kfr_top20_pooled_pooled_mean ~ collapsed_type, data = top_20)
 
-# this one sometimes doesn't converge when I use the whole set, so I use a sample
+# this one sometimes doesn't converge when I use the whole set, so I use a sample 
 model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, data = top_20 %>% sample_n(10000))
 
 model_cluster <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = top_20)
@@ -334,6 +363,10 @@ cv_top_20 <- tibble( # make a tibble
   cluster_prop = cv_model(top_20 %>% select(wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy,prop.nhwht80, prop.nhblk80, prop.asian80, prop.hisp80),
                           y,k, 'betareg', 'mse_calc')
 ) %>% gather()# gather to long format
+
+function(formula_call, data, k, model = 'glm', scoring_function = 'mse_calc', ...)
+cv_model(formula_call = kfr_top20_pooled_pooled_mean ~ collapsed_type, data = top_20, k = 5)
+
 ggplot(cv_top_20, aes(value, key, color = key))+ # and plot
   geom_point()+
   geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
