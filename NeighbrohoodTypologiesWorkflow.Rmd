@@ -49,19 +49,19 @@ prep_avp_df <- function(y, fitted_values, bins, model_name){
 }
 
 mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = NULL){
-  if(is.null(residuals)){
+  if(is.null(residuals)){ # if we aren't given residuals
     if(length(model$residuals)!=0){
-      residuals <- model$residuals
+      residuals <- model$residuals # try and get them from the model
     }
     else if (!is.null(fitted_values)){
-      residuals <- y - fitted_values
+      residuals <- y - fitted_values  # then try and get them from function values
     } else if(is.null(fitted_values)){
-      residuals <- model$y - model$fitted.values
+      residuals <- model$y - model$fitted.values # then try and get them from a different part of the model
     } else {
-      stop("you need to supply a model with residuals or y and fitted values")
+      stop("you need to supply a model with residuals or y and fitted values") # throw and error if we can't
     }
   }
-  return(sum(residuals^2)/length(residuals))
+  return(sum(residuals^2)/length(residuals)) # return the mse
 }
 ```
 
@@ -234,18 +234,22 @@ ggplot(clust_test
     facet_wrap(~dummy_type)+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
     
-
-clust_test %>% count(dummy_type)
-tibble(
-  mean = mse_calc(fitted_values = mean(top_20$kfr_top20_pooled_pooled_mean), y = top_20$kfr_top20_pooled_pooled_mean),
-  cluster = mse_calc(model_cluster),
+mean_guess <- mse_calc(fitted_values = mean(top_20$kfr_top20_pooled_pooled_mean), y = top_20$kfr_top20_pooled_pooled_mean) # assign the mean guess to a variable
+tibble( # make a tibble
+  cluster = mse_calc(model_cluster), # then for each model
   loc_quotient = mse_calc(model_lq),
   neighborhood_type = mse_calc(model_ntype),
   proportion = mse_calc(model_prop),
   cluster_prop = mse_calc(model_cluster_prop)
-) %>% gather() %>%
-  ggplot(aes(value, key))+
-    geom_point()
+) %>% gather() %>% # gather to long format
+  ggplot(aes(value, key, color = key))+ # and plot
+    geom_point()+
+    geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
+    theme_minimal()+
+    theme(legend.position = 'none')+
+    ggtitle("Mean Squared Errors for different Models predicting Probability of entering top 20%",
+            "Red line indicates MSE for null model (always guessing the mean)")
+    
 ```
 
 
