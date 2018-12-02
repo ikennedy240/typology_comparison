@@ -176,6 +176,24 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
     geom_point(alpha = .5, size = 2.5) +
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+
+# mse calc
+mean_guess <- mse_calc(fitted_values = mean(incar$jail_pooled_pooled_mean), y = incar$jail_pooled_pooled_mean) # assign the mean guess to a variable
+tibble( # make a tibble
+  cluster = mse_calc(residuals = model_inc_cluster@residuals), # then for each model
+  loc_quotient = mse_calc(residuals = model_inc_lq@residuals),
+  neighborhood_type = mse_calc(residuals = model_inc_ntype@residuals),
+  proportion = mse_calc(residuals = model_inc_prop@residuals),
+  cluster_prop = mse_calc(residuals = model_inc_cluster_prop@residuals)
+) %>% gather() %>% # gather to long format
+  ggplot(aes(value, key, color = key))+ # and plot
+    geom_point()+
+    geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
+    theme_minimal()+
+    theme(legend.position = 'none')+
+    ggtitle("Mean Squared Errors for different Models predicting Fraction Incarcerated",
+            "Red line indicates MSE for null model (always guessing the mean)")
+    
 ```
 
 
