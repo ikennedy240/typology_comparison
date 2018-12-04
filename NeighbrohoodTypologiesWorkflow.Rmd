@@ -254,6 +254,7 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
     geom_point(alpha = .5, size = 2.5) +
+    theme_minimal()+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 
 # mse calc
@@ -312,6 +313,7 @@ plot_df <- bind_rows(prep_avp_df(model_cluster$y, model_cluster$fitted.values, b
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters))+
     geom_point(alpha = .5, size = 2.5)+
+    theme_minimal()+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 
 
