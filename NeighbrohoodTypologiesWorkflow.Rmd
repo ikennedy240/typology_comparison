@@ -254,12 +254,8 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
     geom_point(alpha = .5, size = 2.5) +
-<<<<<<< HEAD
-    geom_abline(aes(slope = 1, intercept = 0), color = 'red') 
-=======
     theme_minimal()+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
->>>>>>> 66f8b86e6b08b781786acc62b2d3f068170fc321
 
 # mse calc
 mean_guess <- mse_calc(residuals = null_model@residuals) # assign the mean guess to a variable
