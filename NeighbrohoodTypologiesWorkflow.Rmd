@@ -3,6 +3,9 @@ title: "Neighborhood Typologies Workflow"
 output: html_notebook
 ---
 
+
+
+
 ```{r load dependencies}
 source('proportion_typology.R')
 source('neighborhood_clustering.R')
@@ -54,7 +57,7 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
       residuals <- model$residuals # try and get them from the model
     }
     else if (!is.null(fitted_values)){
-      residuals <- fitted_values - y  # then try and get them from function values
+      residuals <- y - fitted_values  # then try and get them from function values
     } else if(is.null(fitted_values)){
       residuals <- model$fitted.values - model$y # then try and get them from a different part of the model
     } else {
@@ -248,8 +251,8 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
           prep_avp_df(as.vector(model_inc_lq@y), as.vector(model_inc_lq@fitted.values), bins, "location quotient"),
           prep_avp_df(as.vector(model_inc_ntype@y), as.vector(model_inc_ntype@fitted.values), bins, "neighborhood type"),
           prep_avp_df(as.vector(model_inc_prop@y), as.vector(model_inc_prop@fitted.values), bins, "racial proportion"),
-          prep_avp_df(as.vector(model_inc_cluster_prop@y), as.vector(model_inc_cluster_prop@fitted.values), bins, "racial proportion + clusters")) %>% 
-  mutate(race_plus_clusters = if_else(model == "racial proportion + clusters", TRUE, FALSE)) # this mutate line adds a dummy for the model of interest
+          prep_avp_df(as.vector(model_inc_cluster_prop@y), as.vector(model_inc_cluster_prop@fitted.values), bins, "clusters + racial proportion")) %>% 
+  mutate(race_plus_clusters = if_else(model == "clusters + racial proportion", TRUE, FALSE)) # this mutate line adds a dummy for the model of interest
 
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
@@ -260,11 +263,11 @@ ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_
 # mse calc
 mean_guess <- mse_calc(residuals = null_model@residuals) # assign the mean guess to a variable
 tibble( # make a tibble
-  cluster = mse_calc(residuals = model_inc_cluster@residuals[,1]), # then for each model
-  loc_quotient = mse_calc(residuals = model_inc_lq@residuals[,1]),
-  neighborhood_type = mse_calc(residuals = model_inc_ntype@residuals[,1]),
-  proportion = mse_calc(residuals = model_inc_prop@residuals[,1]),
-  cluster_prop = mse_calc(residuals = model_inc_cluster_prop@residuals[,1])
+  cluster = mse_calc(residuals = model_inc_cluster@residuals), # then for each model
+  loc_quotient = mse_calc(residuals = model_inc_lq@residuals),
+  neighborhood_type = mse_calc(residuals = model_inc_ntype@residuals),
+  proportion = mse_calc(residuals = model_inc_prop@residuals),
+  cluster_prop = mse_calc(residuals = model_inc_cluster_prop@residuals)
 ) %>% gather() %>% # gather to long format
   ggplot(aes(value, key, color = key))+ # and plot
     geom_point()+
@@ -273,22 +276,7 @@ tibble( # make a tibble
     theme(legend.position = 'none')+
     ggtitle("Mean Squared Errors for different Models predicting Fraction Incarcerated",
             "Red line indicates MSE for null model (always guessing the mean)")
-
-# create MLE plot using predict with type = response
-tibble( # make a tibble
-  cluster = mse_calc(fitted_values = predict(model_inc_cluster, data = incar, type = "response"), y = model_inc_cluster@y), # then for each model
-  loc_quotient = mse_calc(fitted_values = predict(model_inc_lq, data = incar, type = "response"), y = model_inc_lq@y),
-  neighborhood_type = mse_calc(fitted_values = predict(model_inc_ntype, data = incar, type = "response"), y = model_inc_ntype@y),
-  proportion = mse_calc(fitted_values = predict(model_inc_prop, data = incar, type = "response"), y = model_inc_prop@y),
-  cluster_prop = mse_calc(fitted_values = predict(model_inc_cluster_prop, data = incar, type = "response"), y = model_inc_cluster_prop@y)
-) %>% gather() %>% # gather to long format
-  ggplot(aes(value, key, color = key))+ # and plot
-    geom_point()
-    geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
-    theme_minimal()+ 
-    theme(legend.position = 'none')+
-    ggtitle("Mean Squared Errors for different Models predicting Fraction Incarcerated",
-            "Red line indicates MSE for null model (always guessing the mean)")
+     
 ```
 
 
