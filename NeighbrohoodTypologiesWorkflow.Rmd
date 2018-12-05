@@ -54,7 +54,7 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
       residuals <- model$residuals # try and get them from the model
     }
     else if (!is.null(fitted_values)){
-      residuals <- y - fitted_values  # then try and get them from function values
+      residuals <- fitted_values - y  # then try and get them from function values
     } else if(is.null(fitted_values)){
       residuals <- model$fitted.values - model$y # then try and get them from a different part of the model
     } else {
@@ -243,11 +243,11 @@ ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_
 # mse calc
 mean_guess <- mse_calc(residuals = null_model@residuals) # assign the mean guess to a variable
 tibble( # make a tibble
-  cluster = mse_calc(residuals = model_inc_cluster@residuals), # then for each model
-  loc_quotient = mse_calc(residuals = model_inc_lq@residuals),
-  neighborhood_type = mse_calc(residuals = model_inc_ntype@residuals),
-  proportion = mse_calc(residuals = model_inc_prop@residuals),
-  cluster_prop = mse_calc(residuals = model_inc_cluster_prop@residuals)
+  cluster = mse_calc(residuals = model_inc_cluster@residuals[,1]), # then for each model
+  loc_quotient = mse_calc(residuals = model_inc_lq@residuals[,1]),
+  neighborhood_type = mse_calc(residuals = model_inc_ntype@residuals[,1]),
+  proportion = mse_calc(residuals = model_inc_prop@residuals[,1]),
+  cluster_prop = mse_calc(residuals = model_inc_cluster_prop@residuals[,1])
 ) %>% gather() %>% # gather to long format
   ggplot(aes(value, key, color = key))+ # and plot
     geom_point()+
