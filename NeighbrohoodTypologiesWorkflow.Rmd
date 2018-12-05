@@ -64,8 +64,6 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
   return(sum(residuals^2)/length(residuals)) # return the mse
 }
 
-cv_model(formula_call =cbind(jail_count, nonjail_count) ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80
-         , model = 'vglm', data = incar, k = 5, family = betabinomial)
 cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function = 'mse_calc', ...){
   model <- match.fun(model)
   scoring_function <- match.fun(scoring_function)
@@ -120,6 +118,24 @@ cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function 
   }
   mean(score)
 }
+
+#helper function to make simulated PEs and SEs
+sim_pe_se <- function(model, cfs, sims = 10000){
+  object <- model
+  pe <- coef(model) # grab coef pes 
+  vcov <- vcov(model) # grab vcov 
+  # simulate coefficients
+  simbetas <- MASS::mvrnorm(sims, pe, vcov)
+  simbetas <- simbetas[,colnames(simbetas)!='(phi)'] # sim betas
+  probs <- matrix(nrow = sims, ncol = nrow(cfs)) 
+  for(i in 1:sims){ # for each sim
+    object$coefficients$mean <- simbetas[i,] # replace the model coefs
+    probs[i,] <- predict(object, cfs) # and use the built in predict
+  }
+  cfs <- cfs %>% mutate(pe = colMeans(probs), upper = matrixStats::colQuantiles(probs, probs=c(.95)), lower = matrixStats::colQuantiles(probs, probs=c(.05)))
+  return(cfs)
+}
+
 ```
 
 
@@ -238,7 +254,12 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
     geom_point(alpha = .5, size = 2.5) +
+<<<<<<< HEAD
     geom_abline(aes(slope = 1, intercept = 0), color = 'red') 
+=======
+    theme_minimal()+
+    geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+>>>>>>> 66f8b86e6b08b781786acc62b2d3f068170fc321
 
 # mse calc
 mean_guess <- mse_calc(residuals = null_model@residuals) # assign the mean guess to a variable
@@ -311,6 +332,7 @@ plot_df <- bind_rows(prep_avp_df(model_cluster$y, model_cluster$fitted.values, b
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters))+
     geom_point(alpha = .5, size = 2.5)+
+    theme_minimal()+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 
 
@@ -398,16 +420,24 @@ model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk
 
 # to make CFs, I take the means of all variables grouped by neighborhood type
 cfs_20 <- top_20  %>% dplyr::select(-type) %>% group_by(collapsed_type) %>% summarise_all(mean, na.rm = TRUE) %>% mutate_at(vars(ends_with('dmmy')), round)
-cfs_20 <- cfs_20 %>% mutate(
-  p_cluster_prop = predict(model_cluster_prop, cfs_20, type = 'response'),
-  p_cluster = predict(model_cluster, cfs_20, type = 'response'),
-  p_lq = predict(model_lq, cfs_20, type = 'response'),
-  p_ntype = predict(model_ntype, cfs_20, type = 'response'),
-  p_prop = predict(model_prop, cfs_20, type = 'response')) %>% gather(model, prediction, starts_with('p_')) %>% filter(!collapsed_type %in% c('0', 'empty'))
-
-ggplot(cfs_20, aes(x = prediction, y = reorder(collapsed_type, -prediction)))+
-  geom_point(aes(color = model))+
-  geom_point(aes(x = kfr_top20_pooled_pooled_mean), alpha = .3)+
-  theme_minimal()
+sim_pe_se(model_cluster_prop, cfs_20)
+cf_predict <- bind_rows(
+  sim_pe_se(model_cluster_prop, cfs_20) %>% mutate(model = 'cluster + proportion model'),
+  sim_pe_se(model_cluster, cfs_20) %>% mutate(model = 'cluster model'),
+  sim_pe_se(model_lq, cfs_20) %>% mutate(model = 'location quotient model'),
+  sim_pe_se(model_ntype, cfs_20) %>% mutate(model = 'neighborhood type model'),
+  sim_pe_se(model_prop, cfs_20) %>% mutate(model = 'proportion model')) 
+cf_predict %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty')) %>%
+ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
+  geom_point(aes(x = kfr_top20_pooled_pooled_mean))+
+  geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
+  geom_point(aes(color = model, shape = shape))+
+  theme_minimal()+
+  theme(axis.ticks = element_blank(), 
+        axis.line = element_blank(), 
+        panel.grid = element_blank())+
+  xlab("Simulated Probability of Entering top 20% of Income")+
+  ylab("Neighborhood Type")+
+  guides(shape = FALSE, alpha = FALSE)
 ```
 
