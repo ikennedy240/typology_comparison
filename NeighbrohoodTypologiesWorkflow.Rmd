@@ -64,12 +64,10 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
   return(sum(residuals^2)/length(residuals)) # return the mse
 }
 
-cv_model(formula_call =cbind(jail_count, nonjail_count) ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80
-         , model = 'vglm', data = incar, k = 5, family = betabinomial)
 cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function = 'mse_calc', ...){
-  model <- match.fun(model)
-  scoring_function <- match.fun(scoring_function)
-  data <- data %>% select(all.vars(formula_call))
+  model <- match.fun(model) # extract a model typ from model
+  scoring_function <- match.fun(scoring_function) # extract a scoring_function from scoring fuction
+  data <- data %>% select(all.vars(formula_call)) # limit data to variables in formula
   x <- data %>% select(all.vars(update(formula_call, 1 ~ .)))
   if(any(sapply(x, typeof) %in% c('character', 'factor'))){ # if any are factor variables
     print("making dummies")
@@ -100,8 +98,8 @@ cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function 
   score = c()
   for(i in 1:k){
     df <- data
-    df <- df[!colSums(df[folds==i,])==0]
-    df <- df[!colSums(df[!folds==i,])==0]
+    df <- df[!colSums(df[folds==i,])==0] # get rid of missing values
+    df <- df[!colSums(df[!folds==i,])==0] # this could be better
     df_fold <-  df[folds!=i,]
     ivs <- all.vars(update(formula_call, 1 ~ .))
     if(length(all.vars(update(formula_call, . ~ 1))) >1){
@@ -112,11 +110,11 @@ cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function 
                           '~', 
                           paste(intersect(ivs, names(df)), collapse = '+')))
     }
-    fold_model <- model(formula_call, data = df_fold, ...)
+    fold_model <- model(formula_call, data = df_fold, family = 'betabinomial')
     score[i] <- scoring_function(fitted_values = predict(fold_model, 
                                                          df[folds==i,] %>% select(all.vars(update(formula_call, 1 ~ .))), 
                                                          type = 'response'), 
-                                 y =  df[folds==i,] %>% select(all.vars(update(formula_call, . ~ 1))))
+                                 y = df[folds==i,] %>% select(all.vars(update(formula_call, . ~ 1))) %>% transmute(y = jail_count/nonjail_count))
   }
   mean(score)
 }
@@ -158,7 +156,7 @@ teenbirth <-
 model_brth_prop <- betareg(teenbrth_pooled_female_mean ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80,
                            data = teenbirth)
 
-model_brth_LQ <- betareg(teenbrth_pooled_female_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, 
+model_brth_LQ <- betareg(teenbrth_pooled_female_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, 
                          data = teenbirth)
 
 model_brth_cluster <- betareg(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = teenbirth)
@@ -209,7 +207,7 @@ model_inc_cluster <- vglm(cbind(jail_count, nonjail_count) ~ wht.clst.dmmy + blk
                           data = incar,
                           family = betabinomial)
 
-model_inc_lq <- vglm(cbind(jail_count, nonjail_count) ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, 
+model_inc_lq <- vglm(cbind(jail_count, nonjail_count) ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, 
                      data = incar,
                      family = betabinomial)
 
@@ -260,6 +258,27 @@ tibble( # make a tibble
 ```
 
 
+```{r}
+
+prop_cv_inc <- cv_model(formula_call =cbind(jail_count, nonjail_count) ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80
+         , model = 'vglm', data = incar, k = 5, family = betabinomial)
+
+ntype_cv_inc <- cv_model(cbind(jail_count, nonjail_count) ~ collapsed_type, 
+                        model = 'vglm', data = incar, k = 5, family = betabinomial)
+
+cluster_cv_inc <- cv_model(cbind(jail_count, nonjail_count) ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, 
+                          model = 'vglm', data = incar, k = 5, family = betabinomial)
+
+lq_cv_inc <- cv_model(cbind(jail_count, nonjail_count) ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, 
+                     model = 'vglm', data = incar, k = 5, family = betabinomial)
+
+cluster_prop_cv_inc <- cv_model(cbind(jail_count, nonjail_count) ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, 
+                               model = 'vglm', data = incar, k = 5, family = betabinomial) 
+
+null_cv_inc <- cv_model(cbind(jail_count, nonjail_count) ~ 1, 
+                               model = 'vglm', data = incar, k = 5, family = betabinomial)
+```
+
 Modeling the probability of Black children born/living in the tract in 1980 reaching the top 20% of incomes in 2010 based on our typologies and neighborhood racial proportions.
 ```{r modeling probability of reaching top 20%}
 # make a df just for this IV
@@ -273,7 +292,7 @@ model_prop <- betareg(kfr_top20_pooled_pooled_mean ~ prop.nhwht80 + prop.nhblk80
 model_ntype <- betareg(kfr_top20_pooled_pooled_mean ~ collapsed_type, data = top_20)
 
 # this one sometimes doesn't converge when I use the whole set, so I use a sample 
-model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, data = top_20 %>% sample_n(10000))
+model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, data = top_20 %>% sample_n(10000))
 
 model_cluster <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = top_20)
 model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
