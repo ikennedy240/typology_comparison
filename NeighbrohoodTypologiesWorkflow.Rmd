@@ -3,6 +3,9 @@ title: "Neighborhood Typologies Workflow"
 output: html_notebook
 ---
 
+
+
+
 ```{r load dependencies}
 source('proportion_typology.R')
 source('neighborhood_clustering.R')
@@ -56,7 +59,7 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
     else if (!is.null(fitted_values)){
       residuals <- y - fitted_values  # then try and get them from function values
     } else if(is.null(fitted_values)){
-      residuals <- model$y - model$fitted.values # then try and get them from a different part of the model
+      residuals <- model$fitted.values - model$y # then try and get them from a different part of the model
     } else {
       stop("you need to supply a model with residuals or y and fitted values") # throw and error if we can't
     }
@@ -130,6 +133,26 @@ cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function 
   mean(score)
 }
 
+<<<<<<< HEAD
+=======
+#helper function to make simulated PEs and SEs
+sim_pe_se <- function(model, cfs, sims = 10000){
+  object <- model
+  pe <- coef(model) # grab coef pes 
+  vcov <- vcov(model) # grab vcov 
+  # simulate coefficients
+  simbetas <- MASS::mvrnorm(sims, pe, vcov)
+  simbetas <- simbetas[,colnames(simbetas)!='(phi)'] # sim betas
+  probs <- matrix(nrow = sims, ncol = nrow(cfs)) 
+  for(i in 1:sims){ # for each sim
+    object$coefficients$mean <- simbetas[i,] # replace the model coefs
+    probs[i,] <- predict(object, cfs) # and use the built in predict
+  }
+  cfs <- cfs %>% mutate(pe = colMeans(probs), upper = matrixStats::colQuantiles(probs, probs=c(.95)), lower = matrixStats::colQuantiles(probs, probs=c(.05)))
+  return(cfs)
+}
+
+>>>>>>> b6968df04ce80896b09127126db8a3395148a0ec
 ```
 
 
@@ -248,6 +271,7 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
     geom_point(alpha = .5, size = 2.5) +
+    theme_minimal()+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 
 # mse calc
@@ -342,6 +366,7 @@ plot_df <- bind_rows(prep_avp_df(model_cluster$y, model_cluster$fitted.values, b
 # plot comparison
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters))+
     geom_point(alpha = .5, size = 2.5)+
+    theme_minimal()+
     geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 
 
@@ -423,4 +448,30 @@ ggplot(cv_top_20, aes(value, key, color = key))+ # and plot
 
 ```
 
+```{r cfs for top_20}
+model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
+
+
+# to make CFs, I take the means of all variables grouped by neighborhood type
+cfs_20 <- top_20  %>% dplyr::select(-type) %>% group_by(collapsed_type) %>% summarise_all(mean, na.rm = TRUE) %>% mutate_at(vars(ends_with('dmmy')), round)
+sim_pe_se(model_cluster_prop, cfs_20)
+cf_predict <- bind_rows(
+  sim_pe_se(model_cluster_prop, cfs_20) %>% mutate(model = 'cluster + proportion model'),
+  sim_pe_se(model_cluster, cfs_20) %>% mutate(model = 'cluster model'),
+  sim_pe_se(model_lq, cfs_20) %>% mutate(model = 'location quotient model'),
+  sim_pe_se(model_ntype, cfs_20) %>% mutate(model = 'neighborhood type model'),
+  sim_pe_se(model_prop, cfs_20) %>% mutate(model = 'proportion model')) 
+cf_predict %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty')) %>%
+ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
+  geom_point(aes(x = kfr_top20_pooled_pooled_mean))+
+  geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
+  geom_point(aes(color = model, shape = shape))+
+  theme_minimal()+
+  theme(axis.ticks = element_blank(), 
+        axis.line = element_blank(), 
+        panel.grid = element_blank())+
+  xlab("Simulated Probability of Entering top 20% of Income")+
+  ylab("Neighborhood Type")+
+  guides(shape = FALSE, alpha = FALSE)
+```
 
