@@ -133,8 +133,7 @@ cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function 
   mean(score)
 }
 
-<<<<<<< HEAD
-=======
+
 #helper function to make simulated PEs and SEs
 sim_pe_se <- function(model, cfs, sims = 10000){
   object <- model
@@ -152,7 +151,6 @@ sim_pe_se <- function(model, cfs, sims = 10000){
   return(cfs)
 }
 
->>>>>>> b6968df04ce80896b09127126db8a3395148a0ec
 ```
 
 
