@@ -30,7 +30,7 @@ load_chetty <- function(){
              tract = str_extract(str_c('00000', tract),'\\d{6}$'),
              TRTID10 = as.numeric(str_c(state, county, tract))) %>% 
       # select the outcomes of interest
-      select(state, county, tract, TRTID10, jail_white_pooled_mean, jail_white_pooled_mean_se, jail_black_pooled_mean, jail_black_pooled_mean_se, jail_asian_pooled_mean, jail_asian_pooled_mean_se, jail_hisp_pooled_mean, jail_hisp_pooled_mean_se, kfr_top01_pooled_pooled_mean, kfr_top01_pooled_pooled_mean_se, kfr_top01_white_pooled_mean, kfr_top01_white_pooled_mean_se, kfr_top01_black_pooled_mean, kfr_top01_black_pooled_mean_se, kfr_top01_asian_pooled_mean, kfr_top01_asian_pooled_mean_se, kfr_top01_hisp_pooled_mean, kfr_top01_hisp_pooled_mean_se,kfr_top20_pooled_pooled_mean, kfr_top20_pooled_pooled_mean_se, kfr_top20_white_pooled_mean, kfr_top20_white_pooled_mean_se, kfr_top20_black_pooled_mean, kfr_top20_black_pooled_mean_se, kfr_top20_asian_pooled_mean, kfr_top20_asian_pooled_mean_se, kfr_top20_hisp_pooled_mean, kfr_top20_hisp_pooled_mean_se, kfr_white_pooled_mean, kfr_white_pooled_mean_se, kfr_black_pooled_mean, kfr_black_pooled_mean_se, kfr_asian_pooled_mean, kfr_asian_pooled_mean_se, kfr_hisp_pooled_mean, kfr_hisp_pooled_mean_se, teenbrth_white_female_mean, teenbrth_white_female_mean_se, teenbrth_black_female_mean, teenbrth_black_female_mean_se, teenbrth_asian_female_mean, teenbrth_asian_female_mean_se, teenbrth_hisp_female_mean, teenbrth_hisp_female_mean_se)
+      select(state, county, tract, TRTID10, jail_white_pooled_mean, jail_white_pooled_mean_se, jail_black_pooled_mean, jail_black_pooled_mean_se, jail_asian_pooled_mean, jail_asian_pooled_mean_se, jail_hisp_pooled_mean, jail_hisp_pooled_mean_se, kfr_top01_pooled_pooled_mean, kfr_top01_pooled_pooled_mean_se, kfr_top01_white_pooled_mean, kfr_top01_white_pooled_mean_se, kfr_top01_black_pooled_mean, kfr_top01_black_pooled_mean_se, kfr_top01_asian_pooled_mean, kfr_top01_asian_pooled_mean_se, kfr_top01_hisp_pooled_mean, kfr_top01_hisp_pooled_mean_se,kfr_top20_pooled_pooled_mean, kfr_top20_pooled_pooled_mean_se, kfr_top20_white_pooled_mean, kfr_top20_white_pooled_mean_se, kfr_top20_black_pooled_mean, kfr_top20_black_pooled_mean_se, kfr_top20_asian_pooled_mean, kfr_top20_asian_pooled_mean_se, kfr_top20_hisp_pooled_mean, kfr_top20_hisp_pooled_mean_se, kfr_white_pooled_mean, kfr_white_pooled_mean_se, kfr_black_pooled_mean, kfr_black_pooled_mean_se, kfr_asian_pooled_mean, kfr_asian_pooled_mean_se, kfr_hisp_pooled_mean, kfr_hisp_pooled_mean_se, teenbrth_pooled_female_mean, teenbrth_pooled_female_mean_se,  teenbrth_white_female_mean, teenbrth_white_female_mean_se, teenbrth_black_female_mean, teenbrth_black_female_mean_se, teenbrth_asian_female_mean, teenbrth_asian_female_mean_se, teenbrth_hisp_female_mean, teenbrth_hisp_female_mean_se)
     # write a csv
     write_csv(chetty, 'data/chetty.csv')
   } else { # if we do have a chetty file, load it
@@ -67,10 +67,20 @@ mse_calc <- function(model = NULL, residuals = NULL, fitted_values = NULL, y = N
   return(sum(residuals^2)/length(residuals)) # return the mse
 }
 
+formula_call <- teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80
+data = teenbirth
+model = 'betareg'
+
+
 cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function = 'mse_calc', ...){
-  model <- match.fun(model)
-  scoring_function <- match.fun(scoring_function)
-  data <- data %>% select(all.vars(formula_call))
+  data <- data %>% select(all.vars(formula_call)) # limit data to variables in formula
+  if(model=='vglm'){
+    names(data) <- c('count','observed', all.vars(update(formula_call, 1 ~ .)))
+    formula_call <- update(formula_call, cbind(count, observed) ~ .)
+  }
+  model <- match.fun(model) # extract a model typ from model
+  scoring_function <- match.fun(scoring_function) # extract a scoring_function from scoring fuction
+  
   x <- data %>% select(all.vars(update(formula_call, 1 ~ .)))
   if(any(sapply(x, typeof) %in% c('character', 'factor'))){ # if any are factor variables
     print("making dummies")
@@ -101,8 +111,8 @@ cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function 
   score = c()
   for(i in 1:k){
     df <- data
-    df <- df[!colSums(df[folds==i,])==0]
-    df <- df[!colSums(df[!folds==i,])==0]
+    df <- df[!colSums(df[folds==i,])==0] # get rid of missing values
+    df <- df[!colSums(df[!folds==i,])==0] # this could be better
     df_fold <-  df[folds!=i,]
     ivs <- all.vars(update(formula_call, 1 ~ .))
     if(length(all.vars(update(formula_call, . ~ 1))) >1){
@@ -115,13 +125,18 @@ cv_model <- function(formula_call, data, k = 5, model = 'glm', scoring_function 
     }
     fold_model <- model(formula_call, data = df_fold, ...)
     score[i] <- scoring_function(fitted_values = predict(fold_model, 
-                                                         df[folds==i,] %>% select(all.vars(update(formula_call, 1 ~ .))), 
+                                                         df[folds==i,] %>% 
+                                                           select(all.vars(update(formula_call, 1 ~ .))), 
                                                          type = 'response'), 
-                                 y =  df[folds==i,] %>% select(all.vars(update(formula_call, . ~ 1))))
+                                 y = ifelse(class(fold_model) =='vglm', 
+                                                   df[folds==i,] %>% 
+                                                    transmute(y = count/observed),
+                                                   df[folds==i,] %>% 
+                                                    select(all.vars(update(formula_call, . ~ 1))))[[1]]
+                                             )
   }
   mean(score)
 }
-
 #helper function to make simulated PEs and SEs
 sim_pe_se <- function(model, cfs, sims = 10000){
   object <- model
@@ -132,8 +147,12 @@ sim_pe_se <- function(model, cfs, sims = 10000){
   simbetas <- simbetas[,colnames(simbetas)!='(phi)'] # sim betas
   probs <- matrix(nrow = sims, ncol = nrow(cfs)) 
   for(i in 1:sims){ # for each sim
-    object$coefficients$mean <- simbetas[i,] # replace the model coefs
-    probs[i,] <- predict(object, cfs) # and use the built in predict
+    if(class(object) == 'vglm'){
+      object@coefficients <- simbetas[i,]
+    } else {
+      object$coefficients$mean <- simbetas[i,] # replace the model coefs
+    }
+    probs[i,] <- predict(object, cfs, type = 'response') # and use the built in predict
   }
   cfs <- cfs %>% mutate(pe = colMeans(probs), upper = matrixStats::colQuantiles(probs, probs=c(.95)), lower = matrixStats::colQuantiles(probs, probs=c(.05)))
   return(cfs)
@@ -165,24 +184,24 @@ Model: teen female birth rate in 2010
 ```{r modeling teen births}
 # Selecting the dependent and independent variables and merge into a dataset for teen birth model
 teenbirth <- 
-  df_full %>%
+  chetty %>% select(TRTID10, teenbrth_pooled_female_mean, teenbrth_pooled_female_mean_se) %>% full_join(df_full, by = 'TRTID10') %>%
   select(intersect(starts_with("teenbrth"), ends_with("mean")), starts_with("prop."), 
          starts_with("LQ"), ends_with("dmmy"),contains("type")) %>%
   mutate_all(funs(replace(., is.na(.), 0))) %>%
-  mutate(teenbrth_pooled_female_mean = teenbrth_white_female_mean + teenbrth_black_female_mean +
-           teenbrth_asian_female_mean + teenbrth_hispanic_female_mean) %>%
   filter(teenbrth_pooled_female_mean > 0)
 
 # Using different independent variables to run the model
 model_brth_prop <- betareg(teenbrth_pooled_female_mean ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80,
                            data = teenbirth)
 
-model_brth_LQ <- betareg(teenbrth_pooled_female_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, 
+model_brth_lq <- betareg(teenbrth_pooled_female_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, 
                          data = teenbirth)
 
 model_brth_cluster <- betareg(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = teenbirth)
   
 model_brth_ntype <- betareg(teenbrth_pooled_female_mean ~ collapsed_type, data = teenbirth)
+
+model_brth_cluster_prop <- betareg(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = teenbirth)
 ```
 
 Actual vs. Predicted Plot of teen birth rate model
@@ -191,15 +210,65 @@ bins = 40 # set the number of bins
  # function which takes a model and spits out a dataframe formatted to make an avp plot
 
 # Plot the result of each model
-plot_df_brth <- bind_rows(prep_avp_df(model_brth_cluster, bins, "cluster"),
-                          prep_avp_df(model_brth_LQ, bins, "location quotient"),
-                          prep_avp_df(model_brth_ntype, bins, "neighborhood type"),
-                          prep_avp_df(model_brth_prop, bins, "racial proportion"))
+plot_df_brth <- bind_rows(prep_avp_df(model_brth_cluster$y, model_brth_cluster$fitted.values, bins, 'cluster'),
+          prep_avp_df(model_brth_lq$y, model_brth_LQ$fitted.values, bins, 'location quotient'),
+          prep_avp_df(model_brth_ntype$y, model_brth_ntype$fitted.values, bins, 'neighborhood type'),
+          prep_avp_df(model_brth_prop$y, model_brth_prop$fitted.values, bins, 'racial proportion'),
+          prep_avp_df(model_brth_cluster_prop$y, model_brth_cluster_prop$fitted.values, bins, "clusters + racial proportion")) %>% mutate(race_plus_clusters = if_else(model == "clusters + racial proportion", TRUE, FALSE))
 
-ggplot(plot_df_brth, aes(x = predicted, y = actual, color = model)) +
-  geom_point(alpha = .5)+
-  geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+ggplot(plot_df_brth, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
+    geom_point(alpha = .5, size = 2.5) +
+    theme_minimal()+
+    geom_abline(aes(slope = 1, intercept = 0), color = 'red')
 ```
+
+```{r CV MSE for Teen birth}
+
+
+mean_guess <- mse_calc(fitted_values = mean(teenbirth$teenbrth_pooled_female_mean), y = teenbirth$teenbrth_pooled_female_mean) # assign the mean guess to a variable
+  
+cv_birth <- tibble( # make a tibble
+  cluster = cv_model(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = teenbirth, model = 'betareg'), # then for each model
+  loc_quotient = cv_model(teenbrth_pooled_female_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, data = teenbirth, model = 'betareg'),
+  neighborhood_type = cv_model(teenbrth_pooled_female_mean ~ collapsed_type, data = teenbirth, model = 'betareg'),
+  proportion = cv_model(teenbrth_pooled_female_mean ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = teenbirth, model = 'betareg'),
+  cluster_prop = cv_model(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = teenbirth, model = 'betareg')
+) %>% gather()
+
+ggplot(cv_birth, aes(value, key, color = key))+ # and plot
+  geom_point()+
+  geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
+  theme_minimal()+
+  theme(legend.position = 'none')+
+  ggtitle("Mean Squared Errors for different Models predicting Probability of entering top 20%",
+          "Red line indicates MSE for null model (always guessing the mean)")
+
+```
+
+```{r cfs for teen birth}
+# to make CFs, I take the means of all variables grouped by neighborhood type
+cfs_brth <- teenbirth  %>% dplyr::select(-type) %>% group_by(collapsed_type) %>% summarise_all(mean, na.rm = TRUE) %>% mutate_at(vars(ends_with('dmmy')), round)
+
+cf_predict_brth <- bind_rows(
+  sim_pe_se(model_brth_cluster_prop, cfs_brth) %>% mutate(model = 'cluster + proportion model'),
+  sim_pe_se(model_brth_cluster, cfs_brth) %>% mutate(model = 'cluster model'),
+  sim_pe_se(model_brth_lq, cfs_brth) %>% mutate(model = 'location quotient model'),
+  sim_pe_se(model_brth_ntype, cfs_brth) %>% mutate(model = 'neighborhood type model'),
+  sim_pe_se(model_brth_prop, cfs_brth) %>% mutate(model = 'proportion model')) 
+cf_predict_brth %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty'), model!='neighborhood type model') %>%
+ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
+  geom_point(aes(x = teenbrth_pooled_female_mean))+
+  geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
+  geom_point(aes(color = model, shape = shape))+
+  theme_minimal()+
+  theme(axis.ticks = element_blank(), 
+        axis.line = element_blank(), 
+        panel.grid = element_blank())+
+  xlab("Simulated Probability of Entering top 20% of Income")+
+  ylab("Neighborhood Type")+
+  guides(shape = FALSE, alpha = FALSE)
+```
+
 
 Modeling fraction incarcerated on April 1st 2010. 
 ```{r modeling incarceration}
@@ -228,7 +297,7 @@ model_inc_cluster <- vglm(cbind(jail_count, nonjail_count) ~ wht.clst.dmmy + blk
                           data = incar,
                           family = betabinomial)
 
-model_inc_lq <- vglm(cbind(jail_count, nonjail_count) ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, 
+model_inc_lq <- vglm(cbind(jail_count, nonjail_count) ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, 
                      data = incar,
                      family = betabinomial)
 
@@ -279,6 +348,30 @@ tibble( # make a tibble
      
 ```
 
+```{r}
+# to make CFs, I take the means of all variables grouped by neighborhood type
+cfs_incar <- incar  %>% dplyr::select(-type) %>% group_by(collapsed_type) %>% summarise_all(mean, na.rm = TRUE) %>% mutate_at(vars(ends_with('dmmy')), round) %>% filter(!collapsed_type %in% c('0', 'none', 'empty'))
+
+cf_predict_incar <- bind_rows(
+  sim_pe_se(model_inc_cluster_prop, cfs_incar) %>% mutate(model = 'cluster + proportion model'),
+  sim_pe_se(model_inc_cluster, cfs_incar) %>% mutate(model = 'cluster model'),
+  sim_pe_se(model_inc_lq, cfs_incar) %>% mutate(model = 'location quotient model'),
+  sim_pe_se(model_inc_ntype, cfs_incar) %>% mutate(model = 'neighborhood type model'),
+  sim_pe_se(model_inc_prop, cfs_incar) %>% mutate(model = 'proportion model')) 
+cf_predict_incar %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>%
+  filter(model!='neighborhood type model') %>%
+ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
+  geom_point(aes(x = jail_count/nonjail_count))+
+  geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
+  geom_point(aes(color = model, shape = shape))+
+  theme_minimal()+
+  theme(axis.ticks = element_blank(), 
+        axis.line = element_blank(), 
+        panel.grid = element_blank())+
+  xlab("Simulated Proportion Incarcerated in 2010")+
+  ylab("Neighborhood Type")+
+  guides(shape = FALSE, alpha = FALSE)
+```
 
 Modeling the probability of Black children born/living in the tract in 1980 reaching the top 20% of incomes in 2010 based on our typologies and neighborhood racial proportions.
 ```{r modeling probability of reaching top 20%}
@@ -293,7 +386,7 @@ model_prop <- betareg(kfr_top20_pooled_pooled_mean ~ prop.nhwht80 + prop.nhblk80
 model_ntype <- betareg(kfr_top20_pooled_pooled_mean ~ collapsed_type, data = top_20)
 
 # this one sometimes doesn't converge when I use the whole set, so I use a sample 
-model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, data = top_20 %>% sample_n(10000))
+model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, data = top_20 %>% sample_n(10000))
 
 model_cluster <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = top_20)
 model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
@@ -359,17 +452,6 @@ tibble( # make a tibble
 
 mean_guess <- mse_calc(fitted_values = mean(top_20$kfr_top20_pooled_pooled_mean), y = top_20$kfr_top20_pooled_pooled_mean) # assign the mean guess to a variable
 
-model_prop <- betareg(kfr_top20_pooled_pooled_mean ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
-
-model_ntype <- betareg(kfr_top20_pooled_pooled_mean ~ collapsed_type, data = top_20)
-
-# this one sometimes doesn't converge when I use the whole set, so I use a sample
-model_lq <- betareg(kfr_top20_pooled_pooled_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80, data = top_20 %>% sample_n(10000))
-
-model_cluster <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = top_20)
-model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = top_20)
-
-y = top_20[['kfr_top20_pooled_pooled_mean']]
 cv_top_20 <- tibble( # make a tibble
   cluster = cv_model(x = top_20 %>% select(wht.clst.dmmy, blk.clst.dmmy, as.clst.dmmy, hisp.clst.dmmy),
              y = y, 
@@ -404,14 +486,14 @@ model_cluster_prop <- betareg(kfr_top20_pooled_pooled_mean ~ wht.clst.dmmy + blk
 
 # to make CFs, I take the means of all variables grouped by neighborhood type
 cfs_20 <- top_20  %>% dplyr::select(-type) %>% group_by(collapsed_type) %>% summarise_all(mean, na.rm = TRUE) %>% mutate_at(vars(ends_with('dmmy')), round)
-sim_pe_se(model_cluster_prop, cfs_20)
-cf_predict <- bind_rows(
+
+cf_predict_20 <- bind_rows(
   sim_pe_se(model_cluster_prop, cfs_20) %>% mutate(model = 'cluster + proportion model'),
   sim_pe_se(model_cluster, cfs_20) %>% mutate(model = 'cluster model'),
   sim_pe_se(model_lq, cfs_20) %>% mutate(model = 'location quotient model'),
   sim_pe_se(model_ntype, cfs_20) %>% mutate(model = 'neighborhood type model'),
   sim_pe_se(model_prop, cfs_20) %>% mutate(model = 'proportion model')) 
-cf_predict %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty')) %>%
+cf_predict_20 %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty')) %>%
 ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
   geom_point(aes(x = kfr_top20_pooled_pooled_mean))+
   geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
