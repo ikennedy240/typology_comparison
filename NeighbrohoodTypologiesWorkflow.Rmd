@@ -219,7 +219,8 @@ plot_df_brth <- bind_rows(prep_avp_df(model_brth_cluster$y, model_brth_cluster$f
 ggplot(plot_df_brth, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
     geom_point(alpha = .5, size = 2.5) +
     theme_minimal()+
-    geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+    geom_abline(aes(slope = 1, intercept = 0), color = 'red')+
+    ggtitle("AVP Teen Birth")
 ```
 
 ```{r CV MSE for Teen birth}
@@ -228,7 +229,7 @@ ggplot(plot_df_brth, aes(x = predicted, y = actual, color = model, shape = race_
 mean_guess <- mse_calc(fitted_values = mean(teenbirth$teenbrth_pooled_female_mean), y = teenbirth$teenbrth_pooled_female_mean) # assign the mean guess to a variable
   
 cv_birth <- tibble( # make a tibble
-  cluster = cv_model(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy + prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = teenbirth, model = 'betareg'), # then for each model
+  cluster = cv_model(teenbrth_pooled_female_mean ~ wht.clst.dmmy + blk.clst.dmmy + as.clst.dmmy + hisp.clst.dmmy, data = teenbirth, model = 'betareg'), # then for each model
   loc_quotient = cv_model(teenbrth_pooled_female_mean ~ LQ_white_80 + LQ_black_80 + LQ_asian_80 + LQ_native_80 + LQ_hispanic_80, data = teenbirth, model = 'betareg'),
   neighborhood_type = cv_model(teenbrth_pooled_female_mean ~ collapsed_type, data = teenbirth, model = 'betareg'),
   proportion = cv_model(teenbrth_pooled_female_mean ~ prop.nhwht80 + prop.nhblk80 + prop.asian80 + prop.hisp80, data = teenbirth, model = 'betareg'),
@@ -240,7 +241,7 @@ ggplot(cv_birth, aes(value, key, color = key))+ # and plot
   geom_vline(aes(xintercept = mean_guess), color = 'red')+ # make a red vertical line for the mse of just guessing the mean value
   theme_minimal()+
   theme(legend.position = 'none')+
-  ggtitle("Mean Squared Errors for different Models predicting Probability of entering top 20%",
+  ggtitle("Mean Squared Errors for different Models predicting Probability Teen Birth",
           "Red line indicates MSE for null model (always guessing the mean)")
 
 ```
@@ -256,7 +257,7 @@ cf_predict_brth <- bind_rows(
   sim_pe_se(model_brth_ntype, cfs_brth) %>% mutate(model = 'neighborhood type model'),
   sim_pe_se(model_brth_prop, cfs_brth) %>% mutate(model = 'proportion model')) 
 cf_predict_brth %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty'), model!='neighborhood type model') %>%
-ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
+ggplot(aes(x = pe, y = reorder(collapsed_type, -teenbrth_pooled_female_mean), alpha = .4))+
   geom_point(aes(x = teenbrth_pooled_female_mean))+
   geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
   geom_point(aes(color = model, shape = shape))+
@@ -264,7 +265,7 @@ ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
   theme(axis.ticks = element_blank(), 
         axis.line = element_blank(), 
         panel.grid = element_blank())+
-  xlab("Simulated Probability of Entering top 20% of Income")+
+  xlab("Simulated Probability of Having had a Teen Birth")+
   ylab("Neighborhood Type")+
   guides(shape = FALSE, alpha = FALSE)
 ```
@@ -327,7 +328,8 @@ plot_df <- bind_rows(prep_avp_df(as.vector(model_inc_cluster@y), as.vector(model
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters)) +
     geom_point(alpha = .5, size = 2.5) +
     theme_minimal()+
-    geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+    geom_abline(aes(slope = 1, intercept = 0), color = 'red')+
+    ggtitle("Incar AVP")
 
 # mse calc
 mean_guess <- mse_calc(residuals = null_model@residuals) # assign the mean guess to a variable
@@ -360,7 +362,7 @@ cf_predict_incar <- bind_rows(
   sim_pe_se(model_inc_prop, cfs_incar) %>% mutate(model = 'proportion model')) 
 cf_predict_incar %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>%
   filter(model!='neighborhood type model') %>%
-ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
+ggplot(aes(x = pe, y = reorder(collapsed_type, -jail_count/nonjail_count), alpha = .4))+
   geom_point(aes(x = jail_count/nonjail_count))+
   geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
   geom_point(aes(color = model, shape = shape))+
@@ -410,7 +412,8 @@ plot_df <- bind_rows(prep_avp_df(model_cluster$y, model_cluster$fitted.values, b
 ggplot(plot_df, aes(x = predicted, y = actual, color = model, shape = race_plus_clusters))+
     geom_point(alpha = .5, size = 2.5)+
     theme_minimal()+
-    geom_abline(aes(slope = 1, intercept = 0), color = 'red')
+    geom_abline(aes(slope = 1, intercept = 0), color = 'red')+
+    ggtitle("Top 20 AVP")
 
 
 clust_test <- top_20 %>% select(ends_with('dmmy'), TRTID10) %>% 
@@ -493,8 +496,8 @@ cf_predict_20 <- bind_rows(
   sim_pe_se(model_lq, cfs_20) %>% mutate(model = 'location quotient model'),
   sim_pe_se(model_ntype, cfs_20) %>% mutate(model = 'neighborhood type model'),
   sim_pe_se(model_prop, cfs_20) %>% mutate(model = 'proportion model')) 
-cf_predict_20 %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty')) %>%
-ggplot(aes(x = pe, y = reorder(collapsed_type, -pe), alpha = .4))+
+cf_predict_20 %>% mutate(shape = if_else(model == 'cluster + proportion model', TRUE, FALSE)) %>% filter(!collapsed_type %in% c('0', 'none', 'empty'), model!='neighborhood type model') %>%
+ggplot(aes(x = pe, y = reorder(collapsed_type, -kfr_top20_pooled_pooled_mean), alpha = .4))+
   geom_point(aes(x = kfr_top20_pooled_pooled_mean))+
   geom_errorbarh(aes(xmin = lower, xmax = upper, color = model), height = 0)+
   geom_point(aes(color = model, shape = shape))+
